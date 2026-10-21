@@ -1,0 +1,22 @@
+# Data never goes in git (re-download with `make download`)
+data/
+lake/
+*.parquet
+*.part
+
+# Spark / Delta local files
+spark-warehouse/
+metastore_db/
+derby.log
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
