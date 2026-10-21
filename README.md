@@ -35,6 +35,7 @@ Files land in `data/landing/` (override with `LANDING_DIR`). Data is never commi
 pricecatcher/download.py   landing step: fetch raw files from data.gov.my
 pricecatcher/profile.py    read-only profile of the landing files (DuckDB)
 tests/                     unit tests (no network needed)
+docs/data_profile.md       what the real data looks like, and the data quality rules it led to
 ```
 
 ## Roadmap
