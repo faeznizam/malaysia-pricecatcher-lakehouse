@@ -20,10 +20,11 @@ by data.gov.my under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 ## Quick start (Linux / WSL2)
 
 ```bash
-make venv                          # create .venv and install dev tools
+make venv                          # create .venv and install dependencies
 make test                          # run unit tests
 make download                      # Sept + Oct 2026 prices and both lookups
 make download MONTHS="2026-08"     # any other months
+make profile                       # describe the downloaded files
 ```
 
 Files land in `data/landing/` (override with `LANDING_DIR`). Data is never committed.
@@ -32,13 +33,14 @@ Files land in `data/landing/` (override with `LANDING_DIR`). Data is never commi
 
 ```
 pricecatcher/download.py   landing step: fetch raw files from data.gov.my
+pricecatcher/profile.py    read-only profile of the landing files (DuckDB)
 tests/                     unit tests (no network needed)
 ```
 
 ## Roadmap
 
-1. Repo skeleton + data download  ← *here*
-2. Profile the real files (rows, types, nulls, duplicates, price ranges)
+1. Repo skeleton + data download
+2. Profile the real files (rows, types, nulls, duplicates, price ranges)  ← *here*
 3. Bronze: raw files into Delta tables
 4. Silver: schema contracts, data quality rules, quarantine
 5. Gold: star schema and analysis marts
