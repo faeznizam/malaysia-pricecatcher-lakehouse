@@ -10,6 +10,11 @@ checks it against a schema contract and adds where each row came from:
 Loads are idempotent: loading a month again replaces that month only,
 so re-running never duplicates rows.
 
+data.gov.my compresses its Parquet files with Brotli, which Spark cannot
+read without an extra native codec. So each landing file is first
+re-encoded unchanged (same rows, same columns) to zstd in
+<lake>/_staging/ with DuckDB, and Spark reads that copy.
+
 Usage:
     python -m pricecatcher.bronze                   # every month in landing
     python -m pricecatcher.bronze --months 2026-10  # just one month
@@ -21,10 +26,12 @@ import re
 import sys
 from pathlib import Path
 
+import duckdb
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
 
 from pricecatcher.download import DEFAULT_LANDING, LOOKUP_FILES, price_filename
+from pricecatcher.profile import sql_string
 
 DEFAULT_LAKE = os.environ.get("LAKE_ROOT", "lake")
 
@@ -60,6 +67,19 @@ def apply_contract(df: DataFrame, contract: dict, source: str) -> DataFrame:
     return df.select([F.col(name).cast(dtype).alias(name) for name, dtype in contract.items()])
 
 
+def read_landing(spark: SparkSession, source: Path, lake: Path) -> DataFrame:
+    """Read a landing Parquet file via a zstd copy Spark can decode."""
+    staged = lake / "_staging" / source.name
+    staged.parent.mkdir(parents=True, exist_ok=True)
+    con = duckdb.connect()
+    con.execute("SET enable_progress_bar = false")
+    con.execute(
+        f"COPY (SELECT * FROM read_parquet({sql_string(source)})) "
+        f"TO {sql_string(staged)} (FORMAT parquet, COMPRESSION zstd)"
+    )
+    return spark.read.parquet(str(staged))
+
+
 def with_lineage(df: DataFrame, source: Path) -> DataFrame:
     return df.withColumn("_source_file", F.lit(source.name)).withColumn("_ingested_at", F.current_timestamp())
 
@@ -67,7 +87,7 @@ def with_lineage(df: DataFrame, source: Path) -> DataFrame:
 def load_prices(spark: SparkSession, source: Path, lake: Path) -> int:
     """Load one month's price file, replacing that month in bronze."""
     month = re.search(r"(\d{4}-\d{2})", source.name).group(1)
-    df = apply_contract(spark.read.parquet(str(source)), PRICE_CONTRACT, source.name)
+    df = apply_contract(read_landing(spark, source, lake), PRICE_CONTRACT, source.name)
 
     outside = df.filter(F.date_format("date", "yyyy-MM") != month).count()
     if outside:
@@ -88,7 +108,8 @@ def load_prices(spark: SparkSession, source: Path, lake: Path) -> int:
 def load_lookup(spark: SparkSession, source: Path, lake: Path) -> int:
     """Replace a lookup table with the latest snapshot."""
     name = source.stem
-    df = with_lineage(apply_contract(spark.read.parquet(str(source)), LOOKUP_CONTRACTS[name], source.name), source)
+    raw = read_landing(spark, source, lake)
+    df = with_lineage(apply_contract(raw, LOOKUP_CONTRACTS[name], source.name), source)
     rows = df.count()
     df.write.format("delta").mode("overwrite").option("overwriteSchema", "true").save(str(lake / "bronze" / name))
     return rows

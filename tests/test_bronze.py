@@ -1,3 +1,4 @@
+# Fixtures use Brotli compression, like the files data.gov.my publishes.
 import duckdb
 import pytest
 
@@ -10,7 +11,7 @@ def write_prices(path, rows, price_type="DOUBLE"):
         COPY (SELECT date, premise_code::BIGINT AS premise_code, item_code::BIGINT AS item_code,
                      price::{price_type} AS price
               FROM (VALUES {values}) t(date, premise_code, item_code, price))
-        TO '{path}' (FORMAT parquet)
+        TO '{path}' (FORMAT parquet, COMPRESSION brotli)
     """)
 
 
@@ -25,12 +26,12 @@ def landing(tmp_path):
     duckdb.execute(f"""
         COPY (SELECT * FROM (VALUES (10::BIGINT, 'Beras', 'kg', 'BARANGAN KERING', 'BERAS', 'extra'))
               t(item_code, item, unit, item_group, item_category, new_column))
-        TO '{tmp_path}/lookups/lookup_item.parquet' (FORMAT parquet)
+        TO '{tmp_path}/lookups/lookup_item.parquet' (FORMAT parquet, COMPRESSION brotli)
     """)
     duckdb.execute(f"""
         COPY (SELECT * FROM (VALUES (1::BIGINT, 'Kedai A', 'Jalan 1', 'Kedai Runcit', 'Selangor', 'Petaling'))
               t(premise_code, premise, address, premise_type, state, district))
-        TO '{tmp_path}/lookups/lookup_premise.parquet' (FORMAT parquet)
+        TO '{tmp_path}/lookups/lookup_premise.parquet' (FORMAT parquet, COMPRESSION brotli)
     """)
     return tmp_path
 
@@ -84,7 +85,7 @@ def test_reloading_one_month_leaves_the_others(spark, landing, tmp_path):
 
 def test_missing_column_breaks_the_contract(spark, tmp_path):
     path = tmp_path / "pricecatcher_2026-09.parquet"
-    duckdb.execute(f"COPY (SELECT DATE '2026-09-01' AS date, 1::BIGINT AS premise_code, 5.0 AS price) TO '{path}' (FORMAT parquet)")
+    duckdb.execute(f"COPY (SELECT DATE '2026-09-01' AS date, 1::BIGINT AS premise_code, 5.0 AS price) TO '{path}' (FORMAT parquet, COMPRESSION brotli)")
     with pytest.raises(bronze.SchemaContractError, match="item_code"):
         bronze.load_prices(spark, path, tmp_path / "lake")
 
