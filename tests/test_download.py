@@ -99,6 +99,22 @@ def test_non_parquet_response_is_rejected(server, tmp_path):
     assert not Path(str(dest) + ".part").exists()
 
 
-def test_recent_months_crosses_year_boundary():
-    assert dl.recent_months(3, "2027-01") == ["2026-11", "2026-12", "2027-01"]
-    assert dl.recent_months(1, "2026-10") == ["2026-10"]
+def test_months_since_crosses_year_boundary():
+    assert dl.months_since("2026-11", "2027-01") == ["2026-11", "2026-12", "2027-01"]
+    assert dl.months_since("2026-10", "2026-10") == ["2026-10"]
+    assert dl.months_since("2026-11", "2026-10") == []
+
+
+def test_unpublished_current_month_is_not_a_failure(server, tmp_path, monkeypatch, capsys):
+    _, url = server
+    monkeypatch.setattr(dl, "current_month", lambda: "2030-01")
+    code = dl.main(["--months", "2030-01", "--no-lookups", "--landing", str(tmp_path), "--base-url", url])
+    assert code == 0
+    assert "NOT YET" in capsys.readouterr().out
+
+
+def test_previous_month_is_still_refreshed(monkeypatch):
+    monkeypatch.setattr(dl, "current_month", lambda: "2027-01")
+    assert dl.previous_month() == "2026-12"
+    assert dl.changes_upstream(Path("pricecatcher_2026-12.parquet"))
+    assert not dl.changes_upstream(Path("pricecatcher_2026-11.parquet"))

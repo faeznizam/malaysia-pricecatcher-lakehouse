@@ -16,7 +16,7 @@ any later step can be redone from scratch without trusting anything we built.
   connection never leaves a half file that looks finished.
 - Checks the file starts and ends with `PAR1`, so an error page is never saved
   as data.
-- Skips files already downloaded, except the current month and the lookups,
+- Skips files already downloaded, except the current and previous month and the lookups,
   which the publisher keeps adding to.
 
 **Interview questions**
