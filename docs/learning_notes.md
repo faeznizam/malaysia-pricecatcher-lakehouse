@@ -166,3 +166,44 @@ Labuan, Sarawak, Putrajaya, Sabah and Kuala Lumpur.
 4. *What doesn't the state index control for?* Shop mix: a state with more
    hypermarkets may look cheaper than one with more small shops. That's a
    caveat to state when presenting it.
+
+## Step 6: Automation and the report website
+
+**What it does.**
+- **CI** (`.github/workflows/ci.yml`): every push to GitHub runs the full test
+  suite on a fresh machine. A green tick means the code works somewhere other
+  than my laptop.
+- **Report** (`make report`): turns the gold tables into a web page,
+  `site/index.html`, plus CSV downloads of each table. No BI tool needed to
+  view it, just a browser.
+- **Daily pipeline** (`.github/workflows/pipeline.yml`): every day at 2pm
+  Malaysia time, GitHub downloads the latest data and runs bronze, silver,
+  gold and the report, with nobody pressing anything.
+
+**Key ideas**
+- **CI (continuous integration):** run the tests automatically on every
+  change, so a broken change is caught within minutes, not weeks later.
+- **Scheduling (orchestration):** a cron schedule starts the run; each step
+  only starts if the one before succeeded. It's the job Airflow does in the
+  Olist project, done here with GitHub Actions because the pipeline is a
+  straight line and needs no extra server.
+- **Rebuild from raw:** each daily run rebuilds the lake from the landing
+  files. That's only possible because every step is idempotent and the raw
+  files are kept. Past months' files are cached between runs; the current
+  month, last month and the lookups are fetched fresh because the publisher
+  still adds to them.
+- **Edge cases handled:** on the 1st of a month the new month's file may not
+  exist yet, so a missing current month is skipped instead of failing the run.
+
+**Interview questions**
+1. *How do you schedule your pipeline?* A GitHub Actions cron job runs
+   download, bronze, silver, gold and report in order every day. If any step
+   fails, the run stops and GitHub emails me.
+2. *Why GitHub Actions and not Airflow?* The pipeline is one straight line
+   that runs once a day. Airflow needs a server running all the time; it earns
+   its place with many interdependent pipelines, retries and backfills. I've
+   used Airflow in another project, so I picked the simpler tool on purpose.
+3. *What's in your CI?* Unit tests for each layer, run against small fake
+   data built inside the tests, on Python 3.14 and Java 21, on every push.
+4. *How does the report stay current?* It's generated from the gold tables at
+   the end of each daily run, so it's never edited by hand.
