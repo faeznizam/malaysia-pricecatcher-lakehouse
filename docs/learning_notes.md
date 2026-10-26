@@ -125,3 +125,44 @@ Under 0.01% of rows are quarantined, close to what the profile predicted.
    is incomplete, like a new item whose name isn't published yet.
 4. *Why DECIMAL for prices?* Floating-point numbers can't store most decimal
    amounts exactly, so sums of money drift. DECIMAL stores RM8.99 exactly.
+
+## Step 5: Gold
+
+**What it does.** `make gold` rebuilds the analysis layer from silver:
+
+- **Star schema:** `fact_price` (one row per price) linked to `dim_item`,
+  `dim_premise` and `dim_date`. This is the shape Power BI and most BI tools
+  expect. Codes missing from the lookups point to the `-1` "unknown" row, and
+  the original code is kept in `source_item_code` / `source_premise_code`.
+- **mart_item_month:** typical price (median), average, and spread between
+  cheap and dear shops (p90 / p10) per item per month.
+- **mart_item_mom:** month-on-month change per item, two ways (below).
+- **mart_state_index:** how expensive each state is on the same basket of
+  items, Malaysia = 100.
+
+**Naive vs matched change.** The naive change compares this month's average
+price with last month's. If a cheap shop starts reporting, the average falls
+even though no shop cut its price. The matched change uses only shops that
+reported the item in both months, each compared with itself, which is how
+official price indices handle it. It is only reported when at least 20 shops
+match, because a handful of shops is too noisy.
+
+**Result on real data (26 Oct 2026):** 2,699,801 fact rows (bronze minus the
+113 quarantined), 39,878 pointing to an unknown item or premise, 55 days,
+32 state-month index rows. October's state index on a 176-item basket ranged
+from 109.6 (W.P. Labuan) to 97.1 (Melaka); the five most expensive were
+Labuan, Sarawak, Putrajaya, Sabah and Kuala Lumpur.
+
+**Interview questions**
+1. *Why a star schema?* It separates what happened (facts: prices) from
+   descriptions (dimensions: items, shops, dates). Queries and BI models stay
+   simple and fast, and a name change touches one row in a dimension.
+2. *Why map unknown codes to -1 instead of dropping them?* Dropping them
+   would quietly remove 1.5% of real prices. The -1 row keeps every fact
+   joinable and makes the gap visible.
+3. *Why compare states on a common basket?* If one state's shops sell more
+   expensive items, a plain average makes the state look dearer. Using only
+   items sold in every state compares like with like.
+4. *What doesn't the state index control for?* Shop mix: a state with more
+   hypermarkets may look cheaper than one with more small shops. That's a
+   caveat to state when presenting it.

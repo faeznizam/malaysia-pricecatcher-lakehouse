@@ -56,5 +56,5 @@ docs/learning_notes.md     each step in plain words, with interview questions
 2. Profile the real files (rows, types, nulls, duplicates, price ranges)
 3. Bronze: raw files into Delta tables
 4. Silver: data quality rules, quarantine
-5. Gold: star schema and analysis marts  ← *here*
-6. Findings report, storage benchmark, CI
+5. Gold: star schema and analysis marts
+6. Findings report, storage benchmark, CI  ← *next*
