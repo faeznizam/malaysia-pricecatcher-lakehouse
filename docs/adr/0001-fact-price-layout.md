@@ -23,7 +23,7 @@ typical queries (median of 3 runs after a warm-up, round-robin across layouts
 so none benefits from running later).
 
 Test run in the development sandbox on full-size *synthetic* data
-(2,403,667 rows, 8 CPU cores, Spark local mode):
+(2,403,667 rows, 4 CPU cores, Spark local mode):
 
 | Layout | Files | Size (MB) | Write (s) | one_month (s) | one_item (s) | full_scan (s) |
 |---|---:|---:|---:|---:|---:|---:|

@@ -207,3 +207,29 @@ Labuan, Sarawak, Putrajaya, Sabah and Kuala Lumpur.
    data built inside the tests, on Python 3.14 and Java 21, on every push.
 4. *How does the report stay current?* It's generated from the gold tables at
    the end of each daily run, so it's never edited by hand.
+
+## Step 6b: Storage benchmark and ADR
+
+**What it does.** `make benchmark` copies `fact_price` into four layouts
+(no partitions, by month, by month + Z-order, by day) and times three typical
+queries on each. The decision and the numbers are in
+`docs/adr/0001-fact-price-layout.md`.
+
+**Key ideas**
+- **Partitioning:** split the table into folders by a column, so a filter on
+  that column skips folders it doesn't need.
+- **Z-ordering:** sort rows inside files so Delta can skip files using each
+  file's min/max values.
+- **Small-files problem:** too many tiny files slow everything down, because
+  each file has a fixed cost to list and open.
+- **ADR (architecture decision record):** a one-page note of what was decided,
+  why, and when to revisit it.
+
+**Interview questions**
+1. *How did you choose your partitioning?* I measured it. At 11 MB the layout
+   barely mattered, so I chose month because it makes month-by-month reloads
+   safe and matches how the data arrives.
+2. *Why not partition by day?* It created 82 small files instead of 4 and used
+   30% more storage, with no speed gain. That's the small-files problem.
+3. *When would you change it?* Past about 1 GB, or on cloud storage where each
+   file read is a network call. Then I'd re-run the benchmark.
