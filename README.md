@@ -42,13 +42,14 @@ pricecatcher/spark.py      shared Spark session with Delta Lake
 pricecatcher/bronze.py     bronze: landing files into Delta, schema contract, idempotent monthly loads
 tests/                     unit tests (no network needed)
 docs/data_profile.md       what the real data looks like, and the data quality rules it led to
+docs/learning_notes.md     each step in plain words, with interview questions
 ```
 
 ## Roadmap
 
 1. Repo skeleton + data download
 2. Profile the real files (rows, types, nulls, duplicates, price ranges)
-3. Bronze: raw files into Delta tables  ← *here*
-4. Silver: schema contracts, data quality rules, quarantine
+3. Bronze: raw files into Delta tables
+4. Silver: data quality rules, quarantine  ← *next*
 5. Gold: star schema and analysis marts
 6. Findings report, storage benchmark, CI
