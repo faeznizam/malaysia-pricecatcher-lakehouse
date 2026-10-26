@@ -97,3 +97,8 @@ def test_non_parquet_response_is_rejected(server, tmp_path):
         dl.download(f"{url}/pricecatcher_2026-09.parquet", dest)
     assert not dest.exists()
     assert not Path(str(dest) + ".part").exists()
+
+
+def test_recent_months_crosses_year_boundary():
+    assert dl.recent_months(3, "2027-01") == ["2026-11", "2026-12", "2027-01"]
+    assert dl.recent_months(1, "2026-10") == ["2026-10"]

@@ -13,6 +13,7 @@ always fetched again.
 Usage:
     python -m pricecatcher.download --months 2026-09 2026-10
     python -m pricecatcher.download --months 2026-09 --force
+    python -m pricecatcher.download --recent 2           # last month and this month
 """
 
 import argparse
@@ -57,6 +58,16 @@ def current_month() -> str:
     return datetime.now(ZoneInfo("Asia/Kuala_Lumpur")).strftime("%Y-%m")
 
 
+def recent_months(n: int, latest: str | None = None) -> list[str]:
+    """The last n months up to and including latest (default: this month), oldest first."""
+    year, month = map(int, (latest or current_month()).split("-"))
+    months = []
+    for _ in range(n):
+        months.append(f"{year:04d}-{month:02d}")
+        year, month = (year, month - 1) if month > 1 else (year - 1, 12)
+    return months[::-1]
+
+
 def changes_upstream(dest: Path) -> bool:
     """True for files the publisher keeps updating after first release."""
     return dest.name in LOOKUP_FILES or dest.name == price_filename(current_month())
@@ -98,7 +109,9 @@ def download(url: str, dest: Path, force: bool = False) -> str:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--months", nargs="+", required=True, help="Months to download, e.g. 2026-09 2026-10")
+    which = parser.add_mutually_exclusive_group(required=True)
+    which.add_argument("--months", nargs="+", help="Months to download, e.g. 2026-09 2026-10")
+    which.add_argument("--recent", type=int, metavar="N", help="The last N months, including this one")
     parser.add_argument("--landing", default=DEFAULT_LANDING, help="Landing folder (default: $LANDING_DIR or data/landing)")
     parser.add_argument("--no-lookups", action="store_true", help="Skip the item and premise lookup files")
     parser.add_argument("--force", action="store_true", help="Download again even if the file exists")
@@ -106,7 +119,8 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
 
     try:
-        plan = plan_downloads(args.months, Path(args.landing), args.base_url, not args.no_lookups)
+        months = args.months or recent_months(args.recent)
+        plan = plan_downloads(months, Path(args.landing), args.base_url, not args.no_lookups)
     except ValueError as e:
         parser.error(str(e))
 
