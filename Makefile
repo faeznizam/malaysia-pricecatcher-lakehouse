@@ -1,7 +1,7 @@
 PYTHON ?= .venv/bin/python
 MONTHS ?= 2026-09 2026-10
 
-.PHONY: venv test download profile
+.PHONY: venv test download profile bronze
 
 venv:
 	python3 -m venv .venv
@@ -16,3 +16,6 @@ download:
 
 profile:
 	$(PYTHON) -m pricecatcher.profile
+
+bronze:
+	$(PYTHON) -m pricecatcher.bronze

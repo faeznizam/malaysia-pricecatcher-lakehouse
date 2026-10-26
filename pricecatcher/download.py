@@ -5,6 +5,11 @@ Files are saved unchanged (this is the "landing" step, before bronze):
     <landing>/lookups/lookup_item.parquet
     <landing>/lookups/lookup_premise.parquet
 
+Files that are already downloaded are skipped, except the ones the
+publisher keeps changing: the current month (new days are added daily)
+and the two lookups (new items and premises are added). Those are
+always fetched again.
+
 Usage:
     python -m pricecatcher.download --months 2026-09 2026-10
     python -m pricecatcher.download --months 2026-09 --force
@@ -16,7 +21,9 @@ import re
 import sys
 import urllib.error
 import urllib.request
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 BASE_URL = "https://storage.data.gov.my/pricecatcher"
 LOOKUP_FILES = ["lookup_item.parquet", "lookup_premise.parquet"]
@@ -43,6 +50,16 @@ def plan_downloads(months, landing: Path, base_url: str = BASE_URL, include_look
         for name in LOOKUP_FILES:
             plan.append((f"{base_url}/{name}", landing / "lookups" / name))
     return plan
+
+
+def current_month() -> str:
+    """This month in Malaysia time, e.g. '2026-10'."""
+    return datetime.now(ZoneInfo("Asia/Kuala_Lumpur")).strftime("%Y-%m")
+
+
+def changes_upstream(dest: Path) -> bool:
+    """True for files the publisher keeps updating after first release."""
+    return dest.name in LOOKUP_FILES or dest.name == price_filename(current_month())
 
 
 def is_parquet(path: Path) -> bool:
@@ -96,7 +113,7 @@ def main(argv=None) -> int:
     failures = 0
     for url, dest in plan:
         try:
-            status = download(url, dest, args.force)
+            status = download(url, dest, args.force or changes_upstream(dest))
             size_mb = dest.stat().st_size / 1_000_000
             print(f"{status:<10} {dest}  ({size_mb:.1f} MB)")
         except (urllib.error.URLError, ValueError, OSError) as e:

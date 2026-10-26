@@ -19,21 +19,27 @@ by data.gov.my under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 
 ## Quick start (Linux / WSL2)
 
+Needs Python 3.10+ and Java 17 or 21 (`sudo apt install -y openjdk-21-jdk-headless`).
+
 ```bash
 make venv                          # create .venv and install dependencies
 make test                          # run unit tests
 make download                      # Sept + Oct 2026 prices and both lookups
 make download MONTHS="2026-08"     # any other months
 make profile                       # describe the downloaded files
+make bronze                        # load landing files into Delta tables
 ```
 
-Files land in `data/landing/` (override with `LANDING_DIR`). Data is never committed.
+Raw files land in `data/landing/` (override with `LANDING_DIR`) and Delta tables
+in `lake/` (override with `LAKE_ROOT`). Data is never committed.
 
 ## Project layout
 
 ```
 pricecatcher/download.py   landing step: fetch raw files from data.gov.my
 pricecatcher/profile.py    read-only profile of the landing files (DuckDB)
+pricecatcher/spark.py      shared Spark session with Delta Lake
+pricecatcher/bronze.py     bronze: landing files into Delta, schema contract, idempotent monthly loads
 tests/                     unit tests (no network needed)
 docs/data_profile.md       what the real data looks like, and the data quality rules it led to
 ```
@@ -41,8 +47,8 @@ docs/data_profile.md       what the real data looks like, and the data quality r
 ## Roadmap
 
 1. Repo skeleton + data download
-2. Profile the real files (rows, types, nulls, duplicates, price ranges)  ← *here*
-3. Bronze: raw files into Delta tables
+2. Profile the real files (rows, types, nulls, duplicates, price ranges)
+3. Bronze: raw files into Delta tables  ← *here*
 4. Silver: schema contracts, data quality rules, quarantine
 5. Gold: star schema and analysis marts
 6. Findings report, storage benchmark, CI

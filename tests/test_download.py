@@ -48,7 +48,8 @@ def test_plan_without_lookups(tmp_path):
     assert len(dl.plan_downloads(["2026-09"], tmp_path, include_lookups=False)) == 1
 
 
-def test_main_downloads_then_skips(server, tmp_path, capsys):
+def test_main_downloads_then_skips(server, tmp_path, capsys, monkeypatch):
+    monkeypatch.setattr(dl, "current_month", lambda: "2030-01")
     remote, url = server
     for name in ["pricecatcher_2026-09.parquet", *dl.LOOKUP_FILES]:
         (remote / name).write_bytes(FAKE_PARQUET)
@@ -59,8 +60,25 @@ def test_main_downloads_then_skips(server, tmp_path, capsys):
     assert (landing / "prices" / "pricecatcher_2026-09.parquet").read_bytes() == FAKE_PARQUET
     assert (landing / "lookups" / "lookup_premise.parquet").exists()
 
+    capsys.readouterr()
     assert dl.main(args) == 0
-    assert capsys.readouterr().out.count("skipped") == 3
+    out = capsys.readouterr().out
+    # September is a past month: skipped. Lookups change upstream: fetched again.
+    assert out.count("skipped") == 1
+    assert out.count("downloaded") == 2
+
+
+def test_current_month_is_always_refreshed(server, tmp_path, capsys, monkeypatch):
+    remote, url = server
+    monkeypatch.setattr(dl, "current_month", lambda: "2026-10")
+    (remote / "pricecatcher_2026-10.parquet").write_bytes(FAKE_PARQUET)
+    landing = tmp_path / "landing"
+    args = ["--months", "2026-10", "--no-lookups", "--landing", str(landing), "--base-url", url]
+    dl.main(args)
+    grown = b"PAR1" + b"\x01" * 500 + b"PAR1"  # the publisher added more days
+    (remote / "pricecatcher_2026-10.parquet").write_bytes(grown)
+    dl.main(args)
+    assert (landing / "prices" / "pricecatcher_2026-10.parquet").read_bytes() == grown
 
 
 def test_missing_month_fails_and_leaves_no_file(server, tmp_path):
