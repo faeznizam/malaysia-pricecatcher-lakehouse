@@ -1,7 +1,7 @@
 PYTHON ?= .venv/bin/python
 MONTHS ?= 2026-09 2026-10
 
-.PHONY: venv test download profile bronze silver gold report pipeline
+.PHONY: venv test download profile bronze silver gold report pipeline benchmark
 
 venv:
 	python3 -m venv .venv
@@ -31,3 +31,6 @@ report:
 
 # Everything after download, in order (what the daily schedule runs).
 pipeline: bronze silver gold report
+
+benchmark:
+	$(PYTHON) -m pricecatcher.benchmark
