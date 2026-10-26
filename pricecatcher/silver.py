@@ -19,7 +19,7 @@ Usage:
 import argparse
 import sys
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from pyspark.sql import DataFrame, SparkSession, Window
@@ -27,6 +27,7 @@ from pyspark.sql import functions as F
 
 from pricecatcher.bronze import DEFAULT_LAKE
 from pricecatcher.dq import RULES, Rule
+from pricecatcher.download import current_month
 
 
 def read_delta(spark: SparkSession, path: Path) -> DataFrame:
@@ -62,11 +63,19 @@ def evaluate(df: DataFrame, rules: list[Rule] = RULES) -> DataFrame:
 
 
 def days_without_data(df: DataFrame, month: str) -> int:
-    """Days from the 1st of the month to the latest date seen (or month end) with no rows."""
-    last = df.agg(F.max("date")).first()[0]
-    if last is None:
-        return 0
+    """Days in the month with no rows.
+
+    A past month should cover every day to the month's end. The current
+    month only counts up to the latest date seen, since later days
+    haven't been published yet.
+    """
     first = datetime.strptime(month, "%Y-%m").date()
+    if month < current_month():
+        last = (first.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+    else:
+        last = df.agg(F.max("date")).first()[0]
+        if last is None:
+            return 0
     expected = (last - first).days + 1
     return expected - df.select("date").distinct().count()
 

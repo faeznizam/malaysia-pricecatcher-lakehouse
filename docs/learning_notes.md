@@ -82,3 +82,46 @@ it, and the test files now use Brotli so the tests match reality.
 3. *Tell me about a problem you hit.* The Brotli failure above: tests passed on
    fake data, real data failed, so I fixed the loader and made the test data
    match the real files.
+
+## Step 4: Silver
+
+**What it does.** `make silver` checks every bronze row against the data
+quality rules in `pricecatcher/dq.py`. Rows that fail a serious (error) rule go
+to `silver/quarantine` with the names of the rules they broke. Rows with a minor
+(warn) issue stay in `silver/prices` with a label. Clean prices are stored as
+`DECIMAL(10,2)`, an exact money type. Every run adds per-rule counts to
+`meta/dq_run_log`.
+
+**The rules** (evidence in `docs/data_profile.md`)
+
+| Rule | Severity | Catches |
+|---|---|---|
+| null_field | error | a missing date, code or price |
+| duplicate_key | error | a repeat of the same date + premise + item |
+| price_not_positive | error | zero or negative prices |
+| price_too_high | error | 10x or more the item's median that month |
+| price_too_low | error | 1/10 or less of the item's median that month |
+| unknown_item | warn | item code not in the item lookup yet |
+| unknown_premise | warn | premise code not in the premise lookup yet |
+
+**Result on real data (26 Oct 2026)**
+
+| Month | Rows checked | Quarantined | Too high | Too low | Unknown item (kept) |
+|---|---|---|---|---|---|
+| 2026-09 | 1,742,320 | 70 | 20 | 50 | 26,191 |
+| 2026-10 | 957,594 | 43 | 8 | 35 | 13,675 |
+
+Under 0.01% of rows are quarantined, close to what the profile predicted.
+
+**Interview questions**
+1. *Why quarantine instead of deleting bad rows?* Nothing is lost. If a rule is
+   wrong, fix it and re-run silver, and the rows return.
+2. *Why compare each price to its item's median, not a fixed limit?* A fixed
+   limit can't work across items: RM50 is normal for one item and a typo for
+   another. The median is also not pulled around by the outliers themselves,
+   unlike the average.
+3. *What's the difference between error and warn?* Error means the value is
+   wrong and would distort analysis. Warn means the row is valid but something
+   is incomplete, like a new item whose name isn't published yet.
+4. *Why DECIMAL for prices?* Floating-point numbers can't store most decimal
+   amounts exactly, so sums of money drift. DECIMAL stores RM8.99 exactly.

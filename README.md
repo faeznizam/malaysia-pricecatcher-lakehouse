@@ -53,6 +53,6 @@ docs/learning_notes.md     each step in plain words, with interview questions
 1. Repo skeleton + data download
 2. Profile the real files (rows, types, nulls, duplicates, price ranges)
 3. Bronze: raw files into Delta tables
-4. Silver: data quality rules, quarantine  ← *here*
-5. Gold: star schema and analysis marts
+4. Silver: data quality rules, quarantine
+5. Gold: star schema and analysis marts  ← *next*
 6. Findings report, storage benchmark, CI

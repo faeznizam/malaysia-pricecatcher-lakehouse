@@ -19,7 +19,7 @@ SEPTEMBER = [
     (date(2026, 9, 3), 2, 10, 0.0),    # zero (also too low)
     (date(2026, 9, 3), 3, 10, None),   # missing price
     (date(2026, 9, 3), 7, 10, 5.5),    # premise 7 is not in the lookup: warn only
-    (date(2026, 9, 5), 1, 99, 3.0),    # item 99 is not in the lookup: warn only; 4 Sept has no data
+    (date(2026, 9, 5), 1, 99, 3.0),    # item 99 is not in the lookup: warn only
 ]
 
 
@@ -92,7 +92,8 @@ def test_run_log_counts_each_rule(spark, run):
     assert log["duplicate_key"] == 1
     assert log["price_too_high"] == 1
     assert log["unknown_item"] == 1
-    assert log["days_without_data"] == 1
+    # September is a past month, so all 30 days are expected; data exists on 1, 2, 3 and 5
+    assert log["days_without_data"] == 26
     assert log["rows_quarantined"] == read(spark, run, "silver/quarantine").count()
 
 
@@ -101,6 +102,12 @@ def test_rerun_replaces_the_month_and_appends_to_the_log(spark, run):
     assert silver.main(["--lake", str(run)]) == 0
     assert read(spark, run, "silver/prices").count() == before
     assert read(spark, run, "meta/dq_run_log").select("run_id").distinct().count() == 2
+
+
+def test_current_month_counts_missing_days_only_up_to_latest_date(spark, monkeypatch):
+    monkeypatch.setattr(silver, "current_month", lambda: "2026-09")
+    rows = [(date(2026, 9, d),) for d in (1, 2, 5)]
+    assert silver.days_without_data(spark.createDataFrame(rows, "date date"), "2026-09") == 2
 
 
 def test_no_bronze_is_an_error(tmp_path):
