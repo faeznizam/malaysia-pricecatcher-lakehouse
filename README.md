@@ -28,6 +28,7 @@ make download                      # Sept + Oct 2026 prices and both lookups
 make download MONTHS="2026-08"     # any other months
 make profile                       # describe the downloaded files
 make bronze                        # load landing files into Delta tables
+make silver                        # apply data quality rules; bad rows to quarantine
 ```
 
 Raw files land in `data/landing/` (override with `LANDING_DIR`) and Delta tables
@@ -40,6 +41,8 @@ pricecatcher/download.py   landing step: fetch raw files from data.gov.my
 pricecatcher/profile.py    read-only profile of the landing files (DuckDB)
 pricecatcher/spark.py      shared Spark session with Delta Lake
 pricecatcher/bronze.py     bronze: landing files into Delta, schema contract, idempotent monthly loads
+pricecatcher/dq.py         data quality rules, one per line (error = quarantine, warn = tag)
+pricecatcher/silver.py     silver: apply the rules, quarantine table, run log, exact money type
 tests/                     unit tests (no network needed)
 docs/data_profile.md       what the real data looks like, and the data quality rules it led to
 docs/learning_notes.md     each step in plain words, with interview questions
@@ -50,6 +53,6 @@ docs/learning_notes.md     each step in plain words, with interview questions
 1. Repo skeleton + data download
 2. Profile the real files (rows, types, nulls, duplicates, price ranges)
 3. Bronze: raw files into Delta tables
-4. Silver: data quality rules, quarantine  ← *next*
+4. Silver: data quality rules, quarantine  ← *here*
 5. Gold: star schema and analysis marts
 6. Findings report, storage benchmark, CI

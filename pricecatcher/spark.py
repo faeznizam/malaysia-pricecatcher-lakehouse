@@ -1,6 +1,7 @@
 """One place to build the Spark session, so every step uses the same settings."""
 
 import os
+import sys
 
 from delta import configure_spark_with_delta_pip
 from pyspark.sql import SparkSession
@@ -12,6 +13,8 @@ def get_spark(app_name: str = "pricecatcher") -> SparkSession:
     The first run downloads the Delta jars from Maven Central (a few MB);
     later runs use the cached copy in ~/.ivy2.
     """
+    # Spark starts separate Python workers; make them use this same Python (the venv's).
+    os.environ.setdefault("PYSPARK_PYTHON", sys.executable)
     builder = (
         SparkSession.builder.appName(app_name)
         .master(os.environ.get("SPARK_MASTER", "local[*]"))
