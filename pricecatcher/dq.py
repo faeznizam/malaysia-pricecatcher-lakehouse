@@ -16,7 +16,6 @@ Columns available to rules (added by pricecatcher/silver.py):
     known_premise   True if premise_code is in lookup_premise
 """
 
-import warnings
 from dataclasses import dataclass
 from typing import Callable
 
@@ -47,18 +46,10 @@ RULES = [
     Rule("price_too_high", "error", f"price is {TOO_FAR}x or more its item's median (missing decimal point)",
          lambda: F.col("price") >= F.col("item_median") * TOO_FAR),
     Rule("price_too_low", "error", f"price is 1/{TOO_FAR} or less of its item's median",
-         # YOUR TURN (Faez): replace the line below with the condition that is
-         # True when the price is TOO_FAR times smaller than the item's median,
-         # or less. Look at price_too_high just above: it is almost the mirror.
-         lambda: _not_written_yet("price_too_low")),
+         lambda: F.col("price") <= F.col("item_median") / TOO_FAR),
     Rule("unknown_item", "warn", "item_code is not in lookup_item yet",
          lambda: ~F.col("known_item")),
     Rule("unknown_premise", "warn", "premise_code is not in lookup_premise yet",
          lambda: ~F.col("known_premise")),
 ]
 
-
-def _not_written_yet(name: str) -> Column:
-    """Placeholder: the rule catches nothing until it is written."""
-    warnings.warn(f"Rule {name!r} is not written yet, so it catches nothing (see pricecatcher/dq.py)", stacklevel=2)
-    return F.lit(False)

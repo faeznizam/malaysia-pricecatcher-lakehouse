@@ -75,7 +75,7 @@ def test_price_too_high_is_quarantined(spark, run):
 
 
 def test_price_too_low_is_quarantined(spark, run):
-    """Faez's rule: passes once price_too_low is written in pricecatcher/dq.py."""
+    """Prices 10x or more below their item's median are quarantined."""
     errors = errors_by_row(spark, run)
     assert errors[(3, 1, 0.4)] == ["price_too_low"]
     assert errors[(3, 2, 0.0)] == ["price_not_positive", "price_too_low"]
