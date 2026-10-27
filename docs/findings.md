@@ -44,9 +44,20 @@ small grocer). How could that change the ranking?**
 
 A state with many hypermarkets will look cheaper than one served mostly by
 small grocers, even if each type of shop charges the same everywhere. The
-"Which types of shop are cheapest?" section of the report measures how big
-those differences are. The next step would be to compare states within one
-shop type, so like is compared with like.
+same index by type of shop shows the gap is large (October, Malaysia = 100):
+
+| Type of shop | Index |
+|---|---:|
+| Pasar Basah (wet market) | 105.3 |
+| Kedai Runcit (grocer) | 105.1 |
+| Pasar Mini (mini market) | 102.3 |
+| Pasar Raya / Supermarket | 98.7 |
+| Hypermarket | 95.6 |
+
+Wet markets and grocers are about 10% dearer than hypermarkets on the same
+items. That's bigger than the gap between most states, so shop mix could
+move a state several places in the ranking. The next step would be to
+compare states within one shop type, so like is compared with like.
 
 ## 2. Which prices changed most from September to October?
 
