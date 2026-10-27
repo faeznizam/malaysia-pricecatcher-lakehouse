@@ -10,9 +10,11 @@ Codes missing from the lookups point to the -1 "unknown" row that
 data.gov.my already includes in each lookup, so every fact row joins.
 
 Analysis tables ("marts"):
-    <lake>/gold/mart_item_month   price level and spread per item per month
-    <lake>/gold/mart_item_mom     month-on-month change per item, naive and matched
-    <lake>/gold/mart_state_index  price level per state on a common basket (Malaysia = 100)
+    <lake>/gold/mart_item_month          price level and spread per item per month
+    <lake>/gold/mart_item_mom            month-on-month change per item, naive and matched
+    <lake>/gold/mart_item_group_mom      month-on-month change per item group (matched)
+    <lake>/gold/mart_state_index         price level per state on a common basket (Malaysia = 100)
+    <lake>/gold/mart_premise_type_index  price level per type of shop, same method
 
 Gold is small, so it is rebuilt in full on every run.
 
@@ -169,34 +171,66 @@ def build_mart_item_mom(fact: DataFrame, dim_item: DataFrame) -> DataFrame:
     )
 
 
-def build_mart_state_index(fact: DataFrame, dim_premise: DataFrame) -> DataFrame:
-    """How expensive each state is, on the same basket of items.
+def build_price_index(fact: DataFrame, dim_premise: DataFrame, by: str) -> DataFrame:
+    """How expensive each group of premises is, on the same basket of items.
 
-    For each month, the basket is the items sold in every state. For each
-    item, a state's median price is divided by the national median; the
-    state's index is the average of those ratios x 100. Malaysia = 100.
+    `by` is a dim_premise column, e.g. state or premise_type. For each month,
+    the basket is the items sold in every group. For each item, a group's
+    median price is divided by the national median; the group's index is the
+    average of those ratios x 100. Malaysia = 100.
     """
-    with_state = fact.withColumn("price", F.col("price").cast("double")).join(dim_premise.select("premise_code", "state"), "premise_code").filter(
-        F.col("state") != "Unknown")
-    state_item = with_state.groupBy("year_month", "state", "item_code").agg(F.median("price").alias("state_median"))
-    national = with_state.groupBy("year_month", "item_code").agg(F.median("price").alias("national_median"))
-    states_per_month = with_state.groupBy("year_month").agg(F.countDistinct("state").alias("n_states"))
+    with_group = (
+        fact.withColumn("price", F.col("price").cast("double"))
+        .join(dim_premise.select("premise_code", by), "premise_code")
+        .filter(F.col(by) != "Unknown")
+    )
+    group_item = with_group.groupBy("year_month", by, "item_code").agg(F.median("price").alias("group_median"))
+    national = with_group.groupBy("year_month", "item_code").agg(F.median("price").alias("national_median"))
+    groups_per_month = with_group.groupBy("year_month").agg(F.countDistinct(by).alias("n_groups"))
     basket = (
-        state_item.groupBy("year_month", "item_code").agg(F.countDistinct("state").alias("states_selling"))
-        .join(states_per_month, "year_month")
-        .filter(F.col("states_selling") == F.col("n_states"))
+        group_item.groupBy("year_month", "item_code").agg(F.countDistinct(by).alias("groups_selling"))
+        .join(groups_per_month, "year_month")
+        .filter(F.col("groups_selling") == F.col("n_groups"))
         .select("year_month", "item_code")
     )
     return (
-        state_item.join(basket, ["year_month", "item_code"])
+        group_item.join(basket, ["year_month", "item_code"])
         .join(national, ["year_month", "item_code"])
-        .groupBy("year_month", "state")
+        .groupBy("year_month", by)
         .agg(
             F.count("*").alias("basket_items"),
-            F.round(F.avg(F.col("state_median") / F.col("national_median")) * 100, 1).alias("price_index"),
+            F.round(F.avg(F.col("group_median") / F.col("national_median")) * 100, 1).alias("price_index"),
         )
         .withColumn("rank_most_expensive",
                     F.rank().over(Window.partitionBy("year_month").orderBy(F.desc("price_index"))))
+    )
+
+
+def build_mart_state_index(fact: DataFrame, dim_premise: DataFrame) -> DataFrame:
+    """Price level per state on a common basket (Malaysia = 100)."""
+    return build_price_index(fact, dim_premise, "state")
+
+
+def build_mart_premise_type_index(fact: DataFrame, dim_premise: DataFrame) -> DataFrame:
+    """Price level per type of shop (hypermarket, grocer, wet market...) on a common basket."""
+    return build_price_index(fact, dim_premise, "premise_type")
+
+
+def build_mart_item_group_mom(item_mom: DataFrame) -> DataFrame:
+    """Month-on-month change per item group, from the matched item changes.
+
+    Uses the median item, so one item with a big swing can't dominate its group.
+    Only items with enough matched premises count.
+    """
+    return (
+        item_mom.filter(F.col("enough_sample"))
+        .groupBy("item_group", "year_month", "prev_month")
+        .agg(
+            F.count("*").alias("items"),
+            F.round(F.median("matched_change_pct"), 2).alias("median_change_pct"),
+            F.sum((F.col("matched_change_pct") > 0).cast("int")).alias("items_up"),
+            F.sum((F.col("matched_change_pct") < 0).cast("int")).alias("items_down"),
+        )
     )
 
 
@@ -227,11 +261,15 @@ def main(argv=None) -> int:
     counts["dim_date"] = write(build_dim_date(fact), gold / "dim_date")
     counts["mart_item_month"] = write(build_mart_item_month(fact, dim_item), gold / "mart_item_month")
     counts["mart_item_mom"] = write(build_mart_item_mom(fact, dim_item), gold / "mart_item_mom")
+    counts["mart_item_group_mom"] = write(build_mart_item_group_mom(read_delta(spark, gold / "mart_item_mom")),
+                                          gold / "mart_item_group_mom")
     counts["mart_state_index"] = write(build_mart_state_index(fact, dim_premise), gold / "mart_state_index")
+    counts["mart_premise_type_index"] = write(build_mart_premise_type_index(fact, dim_premise),
+                                              gold / "mart_premise_type_index")
 
     print("Gold tables:")
     for name, n in counts.items():
-        print(f"  {name:<18} {n:>10,} rows")
+        print(f"  {name:<24} {n:>10,} rows")
 
     unknown = fact.filter((F.col("item_code") == UNKNOWN) | (F.col("premise_code") == UNKNOWN)).count()
     print(f"\nFact rows pointing to an unknown item or premise: {unknown:,}")

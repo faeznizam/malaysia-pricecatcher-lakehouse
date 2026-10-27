@@ -103,3 +103,19 @@ def test_state_index_uses_the_common_basket(spark, lake):
 
 def test_no_silver_is_an_error(tmp_path):
     assert gold.main(["--lake", str(tmp_path)]) == 1
+
+
+def test_premise_type_index_compares_shop_types(spark, lake):
+    rows = {r["premise_type"]: r for r in
+            read(spark, lake, "mart_premise_type_index").filter("year_month = '2026-09'").collect()}
+    # Sept item 10: Pasar Raya 5.00, 5.00, 8.00 -> median 5.00; Kedai Runcit 6.00; national 5.50
+    assert rows["Pasar Raya"]["price_index"] == pytest.approx(90.9)
+    assert rows["Kedai Runcit"]["price_index"] == pytest.approx(109.1)
+    assert rows["Kedai Runcit"]["basket_items"] == 1  # item 20 only at a Pasar Raya
+
+
+def test_item_group_change_uses_matched_items(spark, lake):
+    row = read(spark, lake, "mart_item_group_mom").filter("item_group = 'BARANGAN KERING'").first()
+    assert row["items"] == 1  # only item 10 has both months with enough shops (fixture minimum 3)
+    assert row["median_change_pct"] == pytest.approx(10.0)
+    assert (row["items_up"], row["items_down"]) == (1, 0)

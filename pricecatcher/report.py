@@ -22,6 +22,9 @@ from pricecatcher.bronze import DEFAULT_LAKE
 REPO_URL = "https://github.com/faeznizam/malaysia-pricecatcher-lakehouse"
 SOURCE_URL = "https://data.gov.my/data-catalogue/pricecatcher"
 MOVERS_PER_SIDE = 8
+SPREAD_ITEMS = 10
+# An item's price spread is only shown when enough shops sell it.
+MIN_SPREAD_PREMISES = 50
 
 STYLE = """
 :root {
@@ -178,6 +181,16 @@ def build(spark, lake: Path, site: Path) -> Path:
         .orderBy(F.desc("gap")).limit(10).collect()
     )
 
+    shop_types = (gold("mart_premise_type_index").filter(F.col("year_month") == latest_month)
+                  .orderBy(F.desc("price_index")).collect())
+    groups = (gold("mart_item_group_mom").filter(F.col("year_month") == latest_month)
+              .orderBy(F.desc("median_change_pct")).collect())
+    spread = (
+        gold("mart_item_month")
+        .filter((F.col("year_month") == latest_month) & (F.col("premises") >= MIN_SPREAD_PREMISES))
+        .orderBy(F.desc("p90_p10_ratio")).limit(SPREAD_ITEMS).collect()
+    )
+
     def item_label(r):
         unit = f" ({r['unit']})" if r["unit"] else ""
         return f"{r['item'] or 'Item ' + str(r['item_code'])}{unit}"
@@ -226,6 +239,39 @@ Not adjusted for the mix of shop types in each state.</p>
        [(r["rank_most_expensive"], r["state"], fmt(r["price_index"]), r["basket_items"]) for r in state], (0, 2, 3))}
 </details>
 
+<h2>Which types of shop are cheapest?</h2>
+<p class="note">Same method as the state index, comparing types of shop instead of states:
+{latest_month}, on a basket of {shop_types[0]["basket_items"] if shop_types else 0} items sold in every type of shop.
+Malaysia = 100.</p>
+<div class="legend"><span class="up">above national level</span><span class="down">below national level</span></div>
+{diverging_bars([(r["premise_type"], r["price_index"]) for r in shop_types], 100, lambda v: fmt(v),
+                lambda s, v: f"{s}: {v:.1f} ({v - 100:+.1f} vs Malaysia)")}
+<details><summary>Show as table</summary>
+{table(["Rank", "Type of shop", "Index", "Basket items"],
+       [(r["rank_most_expensive"], r["premise_type"], fmt(r["price_index"]), r["basket_items"]) for r in shop_types],
+       (0, 2, 3))}
+</details>
+
+<h2>Where shopping around pays most</h2>
+<p class="note">Items whose price varies most between shops in {latest_month}: the dearest 10% of shops
+charge at least this many times what the cheapest 10% charge. Only items sold in at least
+{MIN_SPREAD_PREMISES} shops.</p>
+{table(["Item", "Shops", "Cheap shops (RM)", "Typical (RM)", "Dear shops (RM)", "Dear / cheap"],
+       [(item_label(r), f"{r['premises']:,}", fmt(r["p10_price"], 2), fmt(r["median_price"], 2),
+         fmt(r["p90_price"], 2), fmt(r["p90_p10_ratio"], 2) + "x") for r in spread], (1, 2, 3, 4, 5))}
+
+<h2>Which kinds of goods got dearer?</h2>
+<p class="note">Typical (median) matched change of the items in each group, {prev_month or "last month"} to
+{latest_month}. Only items with at least 20 matched shops.</p>
+<div class="legend"><span class="up">prices rose</span><span class="down">prices fell</span></div>
+{diverging_bars([(r["item_group"], r["median_change_pct"]) for r in groups], 0, lambda v: fmt(v, 1, True) + "%",
+                lambda s, v: f"{s}: {v:+.1f}% (median item)")}
+<details><summary>Show as table</summary>
+{table(["Item group", "Items", "Median change %", "Items up", "Items down"],
+       [(r["item_group"], r["items"], fmt(r["median_change_pct"], 2, True), r["items_up"], r["items_down"])
+        for r in groups], (1, 2, 3, 4))}
+</details>
+
 <h2>Biggest price changes{f", {prev_month} to {latest_month}" if prev_month else ""}</h2>
 <p class="note">Matched change: only shops that reported the item in both months, so the result
 isn't moved by which shops happened to report. Items with fewer than 20 matched shops are left out.
@@ -251,6 +297,7 @@ it can show a change that no shop actually made. These items show the biggest ga
 Source: Ministry of Domestic Trade and Cost of Living (KPDN) PriceCatcher via
 <a href="{SOURCE_URL}">data.gov.my</a>, CC BY 4.0. Code and method: <a href="{REPO_URL}">GitHub</a>.
 Download the tables: <a href="data/mart_state_index.csv">state index</a>,
+<a href="data/mart_premise_type_index.csv">shop type index</a>, <a href="data/mart_item_group_mom.csv">item group changes</a>,
 <a href="data/mart_item_mom.csv">monthly changes</a>, <a href="data/mart_item_month.csv">item prices by month</a>,
 <a href="data/dq_run_log.csv">data quality log</a>.
 </footer>
@@ -266,7 +313,26 @@ Download the tables: <a href="data/mart_state_index.csv">state index</a>,
     )
     (site / "index.html").write_text(page, encoding="utf-8")
 
-    for name in ["mart_state_index", "mart_item_mom", "mart_item_month"]:
+    # The same headline numbers as plain text, for the terminal and for writing up findings.
+    summary = [f"Data up to {latest_date:%d %b %Y}. Latest month {latest_month}.", "",
+               "Shop type index (Malaysia = 100):"]
+    summary += [f"  {r['premise_type']:<28} {fmt(r['price_index']):>6}" for r in shop_types]
+    summary += ["", f"Item groups, median matched change {prev_month} to {latest_month}:"]
+    summary += [f"  {r['item_group']:<28} {fmt(r['median_change_pct'], 2, True):>7}%  "
+                f"({r['items_up']} up, {r['items_down']} down)" for r in groups]
+    summary += ["", "Biggest matched changes:"]
+    summary += [f"  {item_label(r):<40} {fmt(r['matched_change_pct'], 2, True):>7}%  "
+                f"(naive {fmt(r['naive_change_pct'], 2, True)}%, {r['matched_premises']} shops)" for r in movers]
+    summary += ["", "Biggest naive vs matched gaps:"]
+    summary += [f"  {item_label(r):<40} naive {fmt(r['naive_change_pct'], 2, True):>7}%  "
+                f"matched {fmt(r['matched_change_pct'], 2, True):>7}%" for r in gaps]
+    summary += ["", "Widest price spread between shops (p90 / p10):"]
+    summary += [f"  {item_label(r):<40} RM{fmt(r['p10_price'], 2)} to RM{fmt(r['p90_price'], 2)}  "
+                f"({fmt(r['p90_p10_ratio'], 2)}x)" for r in spread]
+    (site / "summary.txt").write_text("\n".join(summary) + "\n", encoding="utf-8")
+
+    for name in ["mart_state_index", "mart_premise_type_index", "mart_item_group_mom", "mart_item_mom",
+                 "mart_item_month"]:
         table_df = gold(name)
         write_csv(site / "data" / f"{name}.csv", table_df.orderBy(*table_df.columns[:2]).collect())
     write_csv(site / "data" / "dq_run_log.csv", log.orderBy("run_at", "year_month", "check_name").collect())
@@ -285,6 +351,7 @@ def main(argv=None) -> int:
 
     from pricecatcher.spark import get_spark
     page = build(get_spark("pricecatcher-report"), lake, Path(args.site))
+    print((page.parent / "summary.txt").read_text(encoding="utf-8"))
     print(f"Report written to {page}")
     return 0
 

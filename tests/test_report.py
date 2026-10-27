@@ -47,7 +47,8 @@ def test_dq_table_uses_each_months_latest_run(site):
 
 
 def test_csv_exports_have_headers(site):
-    for name in ["mart_state_index", "mart_item_mom", "mart_item_month", "dq_run_log"]:
+    for name in ["mart_state_index", "mart_premise_type_index", "mart_item_group_mom", "mart_item_mom",
+                 "mart_item_month", "dq_run_log"]:
         with open(site / "data" / f"{name}.csv", encoding="utf-8") as f:
             rows = list(csv.reader(f))
         assert len(rows) > 1, name
@@ -66,3 +67,11 @@ def test_fmt():
     assert report.fmt(None) == "–"
     assert report.fmt(1234.56) == "1,234.6"
     assert report.fmt(2.5, 1, True) == "+2.5"
+
+
+def test_new_analysis_sections_and_summary(site):
+    html = page(site)
+    assert "Which types of shop are cheapest?" in html and "Kedai Runcit" in html
+    assert "Which kinds of goods got dearer?" in html and "BARANGAN KERING" in html
+    assert "Where shopping around pays most" in html
+    assert "Shop type index" in (site / "summary.txt").read_text(encoding="utf-8")
