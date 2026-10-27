@@ -73,7 +73,7 @@ Needs Python 3.14 and Java 21 (`sudo apt install -y openjdk-21-jdk-headless`).
 ```bash
 make venv          # create .venv and install dependencies
 make test          # run the unit tests (no network needed)
-make download      # Sept + Oct 2026 prices and both lookups
+make download      # May 2026 to now, plus both lookups
 make profile       # describe the downloaded files (optional)
 make pipeline      # bronze -> silver -> gold -> report
 ```
@@ -81,7 +81,7 @@ make pipeline      # bronze -> silver -> gold -> report
 Then open `site/index.html` in a browser.
 
 Other targets: `make bronze`, `make silver`, `make gold`, `make report`,
-`make benchmark`, and `make download MONTHS="2026-08"` for other months.
+`make benchmark`, and `make download SINCE=2025-11` or `MONTHS="2026-08"` for other months.
 Raw files go to `data/landing/` (override with `LANDING_DIR`) and Delta tables
 to `lake/` (override with `LAKE_ROOT`). Data is never committed.
 

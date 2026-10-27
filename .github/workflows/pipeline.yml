@@ -9,7 +9,7 @@ on:
 
 env:
   # The lake is rebuilt from scratch each run, starting from this month.
-  START_MONTH: "2026-09"
+  START_MONTH: "2026-05"
 
 jobs:
   build:

@@ -1,5 +1,6 @@
 PYTHON ?= .venv/bin/python
-MONTHS ?= 2026-09 2026-10
+# Download every month from SINCE to now, or set MONTHS for specific ones.
+SINCE ?= 2026-05
 
 .PHONY: venv test download profile bronze silver gold report pipeline benchmark
 
@@ -12,7 +13,7 @@ test:
 	$(PYTHON) -m pytest -v
 
 download:
-	$(PYTHON) -m pricecatcher.download --months $(MONTHS)
+	$(PYTHON) -m pricecatcher.download $(if $(MONTHS),--months $(MONTHS),--since $(SINCE))
 
 profile:
 	$(PYTHON) -m pricecatcher.profile
