@@ -238,3 +238,23 @@ queries on each. The decision and the numbers are in
    pays off on much bigger tables.
 4. *When would you change it?* Past about 1 GB, or on cloud storage where each
    file read is a network call. Then I'd re-run the benchmark.
+
+## Concept: why Parquet?
+
+Parquet stores a table **column by column** instead of row by row (like CSV).
+
+- **Smaller:** similar values sit together and compress well. September's
+  1.7 million prices is about 2 MB as Parquet; as CSV it would be roughly
+  40-50 MB (estimate).
+- **Faster:** a query for the average price reads only the price column.
+- **Typed:** dates are dates and prices are numbers, so nothing is guessed.
+- **Skippable:** each file stores min/max per column, so Spark can skip chunks
+  that can't match a filter (what Z-ordering builds on).
+
+Delta Lake is Parquet files plus a transaction log. Catch: Parquet files can
+use different compression codecs; data.gov.my uses Brotli, which Spark can't
+read, hence the DuckDB re-encode in bronze.
+
+**Interview question:** *Why Parquet instead of CSV?* Smaller, faster to
+query because you read only the columns you need, and it keeps data types,
+so there's no guessing about dates or numbers.
