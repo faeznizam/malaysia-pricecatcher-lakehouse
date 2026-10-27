@@ -60,12 +60,16 @@ def build_dim_item(items: DataFrame) -> DataFrame:
     )
 
 
+def tidy(column: str):
+    """Collapse runs of whitespace (including non-breaking and zero-width spaces) and trim, so
+    'Pasar Basah' and 'Pasar Basah ' group together. Missing becomes 'Unknown'."""
+    cleaned = F.trim(F.regexp_replace(F.col(column), r"[\s\u00a0\u200b\ufeff]+", " "))
+    return F.coalesce(F.when(cleaned != "", cleaned), F.lit("Unknown")).alias(column)
+
+
 def build_dim_premise(premises: DataFrame) -> DataFrame:
     return premises.select(
-        "premise_code", "premise", "address",
-        F.coalesce("premise_type", F.lit("Unknown")).alias("premise_type"),
-        F.coalesce("state", F.lit("Unknown")).alias("state"),
-        F.coalesce("district", F.lit("Unknown")).alias("district"),
+        "premise_code", "premise", "address", tidy("premise_type"), tidy("state"), tidy("district"),
     )
 
 

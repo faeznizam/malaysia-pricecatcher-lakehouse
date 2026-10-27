@@ -50,18 +50,46 @@ shop type, so like is compared with like.
 
 ## 2. Which prices changed most from September to October?
 
-See the "Biggest price changes" chart in the report.
+Matched change, September to October (October covers 10–25 Oct only):
+
+| Rose most | Change | Shops | Fell most | Change | Shops |
+|---|---:|---:|---|---:|---:|
+| Sawi hijau | +45.7% | 1,368 | Betik (papaya) | −20.9% | 264 |
+| Sawi pendek / pak choy | +40.6% | 1,319 | Tomato | −18.2% | 1,592 |
+| Kailan | +30.5% | 949 | Tembikai susu (honeydew) | −18.1% | 257 |
+| Kacang buncis | +30.0% | 1,359 | Tembikai merah tanpa biji | −13.2% | 288 |
+| Timun | +21.0% | 1,587 | Terung bulat | −10.2% | 812 |
+| Bayam hijau | +20.1% | 1,073 | Ikan selar | −8.6% | 1,058 |
+
+By item group, the typical (median) item barely moved: dry goods
+(barangan kering) +0.67% with 15 of 18 items up, fresh goods (barangan segar)
+−0.01%, with 47 items up and 49 down.
 
 **Q4. Pick one item that rose or fell a lot. Is there a likely reason
 (season, festival, supply, policy)? Or could it be a data issue?**
 
-> _Your answer_
+Leafy vegetables jumped together: sawi hijau +46%, pak choy +41%, kailan
++30% and kacang buncis +30%. This is very unlikely to be a data issue: each
+is based on 950 to 1,400 shops that reported in both months, and they all
+moved in the same direction. A shared supply shock is the likely cause:
+October's heavy inter-monsoon rain can damage leafy crops and disrupt
+harvests in growing areas such as Cameron Highlands, and leafy greens can't
+be stored, so prices react fast. This explanation is a hypothesis; checking
+weather records for those weeks would confirm or rule it out. Meanwhile some
+fruit (papaya, honeydew, watermelon) and tomatoes got cheaper, so fresh goods
+as a group were flat even though greens rose sharply.
 
 **Q5. Why did we use the "matched" change (same shops in both months)
 instead of comparing plain averages? Give an example from the "Why matched
 matters" table.**
 
-> _Your answer_
+A plain average moves whenever the set of shops reporting changes, even if
+no shop changed its price. Teh Lipton (100 bags) shows this clearly: the
+naive change says it fell 7.8%, but in shops that reported in both months it
+actually rose 1.0%. The fall came from cheaper shops joining in October, not
+from price cuts. Udang putih besar is similar: naive −6.2%, matched +0.8%.
+Comparing each shop with itself, as official price indices do, avoids
+reporting changes that never happened.
 
 ## 3. How clean is the data?
 

@@ -2,6 +2,7 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
+from pyspark.sql import functions as F
 
 from pricecatcher import gold
 
@@ -119,3 +120,14 @@ def test_item_group_change_uses_matched_items(spark, lake):
     assert row["items"] == 1  # only item 10 has both months with enough shops (fixture minimum 3)
     assert row["median_change_pct"] == pytest.approx(10.0)
     assert (row["items_up"], row["items_down"]) == (1, 0)
+
+
+def test_premise_labels_are_tidied(spark):
+    raw = spark.createDataFrame(
+        [(1, "Pasar Basah", "Johor"), (2, "Pasar Basah ", " Johor"), (3, "Pasar Basah", None),
+         (4, "Pasar Basah​", "")],
+        "premise_code bigint, premise_type string, state string",
+    ).withColumn("premise", F.lit("x")).withColumn("address", F.lit("x")).withColumn("district", F.lit("x"))
+    dim = gold.build_dim_premise(raw)
+    assert {r["premise_type"] for r in dim.collect()} == {"Pasar Basah"}
+    assert sorted(r["state"] for r in dim.collect()) == ["Johor", "Johor", "Unknown", "Unknown"]
