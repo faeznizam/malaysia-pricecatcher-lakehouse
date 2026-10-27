@@ -1,3 +1,5 @@
+import os
+
 from pricecatcher import benchmark
 from tests.test_gold import lake as gold_lake  # noqa: F401  (reuses the gold fixture)
 
@@ -21,3 +23,12 @@ def test_markdown_table_has_a_row_per_layout():
            "one_month": 0.5, "one_item": 0.25, "full_scan": 3.0}
     table = benchmark.to_markdown([row])
     assert table.splitlines()[-1] == "| x | 1,200 | 1.2 | 2.0 | 0.50 | 0.25 | 3.00 |"
+
+
+def test_relative_lake_path_works(spark, tmp_path):
+    # `make benchmark` passes the default lake as the relative path "lake".
+    path = benchmark.Path(os.path.relpath(tmp_path / "lake" / "benchmark" / "by_month_zorder"))
+    df = spark.createDataFrame([(1, "2026-10")], "item_code bigint, year_month string")
+    benchmark.write_layout(spark, df, path, "by_month_zorder")
+    files, _ = benchmark.table_files(spark, path)
+    assert files == 1

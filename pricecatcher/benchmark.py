@@ -43,13 +43,13 @@ def write_layout(spark, fact, path: Path, layout: str) -> float:
         writer = writer.partitionBy("date")
     writer.save(str(path))
     if layout == "by_month_zorder":
-        spark.sql(f"OPTIMIZE delta.`{path}` ZORDER BY (item_code)")
+        spark.sql(f"OPTIMIZE delta.`{path.resolve()}` ZORDER BY (item_code)")
     return time.perf_counter() - start
 
 
 def table_files(spark, path: Path) -> tuple[int, float]:
     """Number of data files and total size in MB in the current table version."""
-    detail = spark.sql(f"DESCRIBE DETAIL delta.`{path}`").first()
+    detail = spark.sql(f"DESCRIBE DETAIL delta.`{path.resolve()}`").first()
     return detail["numFiles"], detail["sizeInBytes"] / 1_000_000
 
 
