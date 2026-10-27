@@ -1,12 +1,12 @@
 # ADR 0001: Partition fact_price by month, no Z-ordering
 
-**Status:** accepted (to re-check with real-data numbers from `make benchmark`)
-**Date:** 26 Oct 2026
+**Status:** accepted
+**Date:** 27 Oct 2026
 
 ## Context
 
 `gold/fact_price` holds one row per price observation, about 2.7 million rows
-(around 11 MB) for September and October 2026, growing by roughly 1.8 million
+(about 10 MB) for September and October 2026, growing by roughly 1.8 million
 rows a month. How the table is laid out on disk decides how much a query has to
 read. Three common choices:
 
@@ -18,33 +18,38 @@ read. Three common choices:
 
 ## What was measured
 
-`pricecatcher/benchmark.py` copies fact_price into four layouts and times three
-typical queries (median of 3 runs after a warm-up, round-robin across layouts
-so none benefits from running later).
+`pricecatcher/benchmark.py` (`make benchmark`) copies fact_price into four
+layouts and times three typical queries: one month's total, one item's daily
+price across all months, and a median per item per month over everything.
+Each figure is the median of 3 runs after a warm-up, round-robin across layouts
+so none benefits from running later.
 
-Test run in the development sandbox on full-size *synthetic* data
-(2,403,667 rows, 4 CPU cores, Spark local mode):
+Real data, 27 Oct 2026: 2,699,801 rows (1 Sep to 25 Oct 2026), on a Windows
+laptop under WSL2, Spark local mode:
 
 | Layout | Files | Size (MB) | Write (s) | one_month (s) | one_item (s) | full_scan (s) |
 |---|---:|---:|---:|---:|---:|---:|
-| unpartitioned | 4 | 11.2 | 13.6 | 0.92 | 0.68 | 6.17 |
-| by_month | 4 | 11.2 | 10.7 | 0.96 | 0.82 | 6.67 |
-| by_month_zorder | 2 | 11.3 | 25.8 | 0.81 | 0.75 | 8.85 |
-| by_day | 82 | 14.5 | 10.3 | 0.90 | 0.79 | 6.17 |
+| unpartitioned | 8 | 10.1 | 8.2 | 0.31 | 0.34 | 0.79 |
+| by_month | 8 | 10.1 | 4.0 | 0.40 | 0.31 | 0.74 |
+| by_month_zorder | 2 | 9.9 | 9.3 | 0.40 | 0.33 | 1.32 |
+| by_day | 176 | 12.7 | 2.6 | 0.45 | 0.48 | 1.23 |
 
-*Real-data results: to be added after running `make benchmark` on the laptop.*
+(Write times include the first layout paying Spark's start-up costs, so they
+are only a rough guide.)
 
 ## Findings
 
-1. **At this size, layout barely changes query speed.** Every query reads the
-   whole 11 MB in well under a second; differences of 0.1-0.2 s are noise.
-   Partition pruning saves reading files, and there's almost nothing to save.
-2. **Z-ordering cost more than it saved.** It doubled the write time and
-   compacted the table into fewer files, which left fewer pieces to process in
-   parallel, so the full scan got slower.
-3. **Partitioning by day is the classic small-files mistake.** 82 files instead
-   of 4 and 30% more storage, for no speed gain. At larger scale, the cost of
-   listing and opening thousands of tiny files grows.
+1. **At this size, partitioning by month vs not at all makes no real
+   difference.** Every query on both finishes in under a second, and gaps of
+   0.1 s are noise. Partition pruning saves reading files, and with 10 MB
+   there's almost nothing to save.
+2. **Z-ordering made things worse.** It took over twice as long to write as
+   by_month and squeezed the table into 2 files. Fewer files means fewer
+   pieces to process in parallel, so the full scan was 78% slower
+   (1.32 s vs 0.74 s).
+3. **Partitioning by day is the classic small-files mistake.** It made
+   176 files instead of 8 and used 26% more storage, and the full scan was 66%
+   slower (1.23 s vs 0.74 s). That overhead grows as more days are loaded.
 
 ## Decision
 

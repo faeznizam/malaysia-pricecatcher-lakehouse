@@ -226,10 +226,15 @@ queries on each. The decision and the numbers are in
   why, and when to revisit it.
 
 **Interview questions**
-1. *How did you choose your partitioning?* I measured it. At 11 MB the layout
-   barely mattered, so I chose month because it makes month-by-month reloads
-   safe and matches how the data arrives.
-2. *Why not partition by day?* It created 82 small files instead of 4 and used
-   30% more storage, with no speed gain. That's the small-files problem.
-3. *When would you change it?* Past about 1 GB, or on cloud storage where each
+1. *How did you choose your partitioning?* I measured it on the real 2.7
+   million rows. By month and unpartitioned were equally fast (under a
+   second), so I chose month because it makes month-by-month reloads safe and
+   matches how the data arrives.
+2. *Why not partition by day?* It created 176 small files instead of 8, used
+   26% more storage and made the full scan 66% slower. That's the small-files
+   problem.
+3. *Did Z-ordering help?* No. It doubled write time and made the full scan
+   78% slower, because 2 big files leave Spark less to do in parallel. It only
+   pays off on much bigger tables.
+4. *When would you change it?* Past about 1 GB, or on cloud storage where each
    file read is a network call. Then I'd re-run the benchmark.
