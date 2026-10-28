@@ -1,8 +1,9 @@
-# Findings: Malaysia retail prices, September–October 2026
+# Findings: Malaysia retail prices, May–October 2026
 
-Data: KPDN PriceCatcher via data.gov.my (CC BY 4.0), 1 Sep to 25 Oct 2026,
-2,699,801 prices from about 2,150 shops for 343 items. October is a partial
-month, and 1–9 October and 16 and 30 September have no data at all.
+Data: KPDN PriceCatcher via data.gov.my (CC BY 4.0), May to 26 Oct 2026,
+from about 2,150 shops for 343 items. October is a partial month, and
+1–9 October and 16 and 30 September have no data at all. Sections 1–3 look at
+September and October; section 4 covers all six months.
 
 > **Draft for Faez to review.** The answers below were drafted by Claude from
 > the pipeline's numbers. Faez: rewrite anything you'd say differently, so
@@ -121,9 +122,36 @@ too low. The bigger issue is completeness, not accuracy: 1.5% of prices use
 item codes that aren't in the published item list yet, and 11 days have no
 data at all.
 
+## 4. How have prices moved since May?
+
+Price index, May 2026 = 100, built from matched item changes (geometric mean,
+chained month to month; every item counts equally):
+
+| Group | Jun | Jul | Aug | Sep | Oct |
+|---|---:|---:|---:|---:|---:|
+| **All items** | 100.1 | 100.3 | 100.7 | 100.7 | **101.2** |
+| Barangan kering (dry goods) | 100.9 | 101.9 | 102.8 | 106.7 | **108.8** |
+| Barangan segar (fresh) | 100.2 | 100.4 | 101.8 | 100.9 | 101.8 |
+| Susu dan barangan bayi (milk, baby) | 100.1 | 100.1 | 100.1 | 100.6 | 100.9 |
+| Minuman (drinks) | 100.0 | 100.2 | 100.3 | 100.5 | 100.7 |
+| Barangan berbungkus (packaged) | 100.0 | 100.0 | 99.9 | 99.9 | 99.9 |
+| Produk kebersihan (hygiene) | 99.8 | 99.6 | 99.8 | 99.9 | 99.7 |
+
+**Q7. What stands out over the six months?**
+
+Overall, prices rose only 1.2% in five months, about 2.9% a year if it
+continued, which is in the range of normal inflation. The exception is dry
+goods (rice, sugar, flour, cooking oil and similar staples): up 8.8%, rising
+every month, with the biggest jump in September (+3.8%). That steady climb
+looks like a cost or policy change working through, not a weather shock like
+the leafy vegetables in Q4. Packaged and hygiene products barely moved,
+likely because big brands change prices rarely. The next step is to find
+which dry-goods items drove the rise; that would tell whether it's one
+staple (for example rice) or a broad increase.
+
 ## Limitations
 
-- Only about two months of data, so no long-term trends yet.
+- Six months of data: enough for a trend, not for seasonal patterns across years.
 - State index not adjusted for shop type or item quality.
 - 14 new item codes are missing from the published item list; their prices
   are kept but can't be named.

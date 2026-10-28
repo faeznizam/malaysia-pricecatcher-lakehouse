@@ -29,12 +29,19 @@ flowchart LR
 | Landing | Raw files saved unchanged; partial downloads never kept | `data/landing/` |
 | Bronze | Loaded into Delta with a schema contract and lineage columns; one month replaced at a time, so re-runs are safe | `prices`, `lookup_item`, `lookup_premise` |
 | Silver | 7 data quality rules; bad rows quarantined (not deleted), minor issues tagged; prices stored as exact `DECIMAL` | `prices`, `quarantine`, `meta/dq_run_log` |
-| Gold | Star schema plus analysis marts | `fact_price`, `dim_item`, `dim_premise`, `dim_date`, `mart_item_month`, `mart_item_mom`, `mart_state_index` |
+| Gold | Star schema plus analysis marts | `fact_price`, `dim_item`, `dim_premise`, `dim_date`, `mart_item_month`, `mart_item_mom`, `mart_item_group_mom`, `mart_price_trend`, `mart_state_index`, `mart_premise_type_index` |
 
-## Results (real data, 1 Sep to 25 Oct 2026)
+## Results (real data, May to 26 Oct 2026)
 
-- **2,699,801** prices loaded from about 2,150 shops for 343 items.
-- **113 rows quarantined** (under 0.01%): 28 prices at 10x or more their
+- **Six months of prices** from about 2,150 shops for 343 items
+  (September and October alone: 2,699,801 prices).
+- **Price trend:** overall prices rose **1.2%** from May to October, but dry
+  goods (rice, sugar, flour, oil) rose **8.8%**, climbing every month.
+- **Leafy vegetables jumped 20–46%** from September to October in the same
+  shops, while tomatoes and some fruit fell. A supply shock, not a data error.
+- **Shop type matters:** small grocers and wet markets are about 10% dearer
+  than hypermarkets on the same items.
+- **113 rows quarantined** in September and October (under 0.01%): 28 prices at 10x or more their
   item's median (typically a missing decimal point) and 85 at a tenth or less.
 - **State price index**, October, on a 176-item basket (Malaysia = 100):
   W.P. Labuan was the most expensive at **109.6** and Melaka the cheapest at
