@@ -1,7 +1,7 @@
 # ADR 0001: Partition fact_price by month, no Z-ordering
 
 **Status:** accepted
-**Date:** 27 Oct 2026
+**Date:** 27 Oct 2026 (re-measured 28 Oct at 10 million rows)
 
 ## Context
 
