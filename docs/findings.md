@@ -137,17 +137,39 @@ chained month to month; every item counts equally):
 | Barangan berbungkus (packaged) | 100.0 | 100.0 | 99.9 | 99.9 | 99.9 |
 | Produk kebersihan (hygiene) | 99.8 | 99.6 | 99.8 | 99.9 | 99.7 |
 
+Biggest changes per item, May to October (matched, chained; only items
+with at least 20 of the same shops in every month):
+
+| Rose most | Change | Fell most | Change |
+|---|---:|---|---:|
+| Telur ayam gred C (eggs, 30) | +39.7% | Anggur merah (red grapes) | −43.8% |
+| Lada benggala hijau (capsicum) | +35.2% | Limau kasturi (calamansi) | −28.7% |
+| Bawang kecil merah import India (shallots) | +35.0% | Limau nipis (lime) | −28.3% |
+| Tomato | +33.8% | Timun (cucumber) | −16.2% |
+| Telur ayam gred B (eggs, 30) | +33.4% | Lai kuning (pear) | −12.0% |
+| Cili merah minyak (red chilli) | +30.3% | Cili akar hijau (green chilli) | −9.3% |
+| Cili merah Kulai (red chilli) | +26.6% | Santan Ayam Brand (coconut milk) | −8.0% |
+| Bawang besar import India (onions) | +24.8% | Lobak putih (radish) | −7.2% |
+
 **Q7. What stands out over the six months?**
 
 Overall, prices rose only 1.2% in five months, about 2.9% a year if it
-continued, which is in the range of normal inflation. The exception is dry
-goods (barangan kering, the group that holds dry staples): up 8.8%, rising
-every month, with the biggest jump in September (+3.8%). That steady climb
-looks like a cost or policy change working through, not a weather shock like
-the leafy vegetables in Q4. Packaged and hygiene products barely moved,
-likely because big brands change prices rarely. The next step is to find
-which dry-goods items drove the rise; that would tell whether it's one
-staple (for example rice) or a broad increase.
+continued, which is in the range of normal inflation. Two things stand out:
+
+- **Dry goods rose 8.8%, and imported onions explain much of it.** Indian
+  shallots (+35%) and onions (+25%) are in the dry goods group, and they are
+  among the biggest risers of any item. Onion prices depend heavily on
+  harvests and export rules in India, so a change there would pass straight
+  through to Malaysian shelves. That's a hypothesis to check against news
+  from those months.
+- **Eggs rose by a third.** Grade B and C eggs went up 33% and 40% in the same
+  shops. A rise that large and steady in a staple usually comes from a policy
+  or cost change (for example price controls, subsidies or feed costs) rather
+  than normal market movement. Again, worth checking against the news.
+
+Packaged and hygiene products barely moved, likely because big brands change
+prices rarely. Cucumber shows why a longer view matters: it rose 21% from
+September to October, yet it is still 16% cheaper than in May.
 
 ## Limitations
 

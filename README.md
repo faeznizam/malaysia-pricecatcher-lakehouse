@@ -36,7 +36,8 @@ flowchart LR
 - **10,133,244 prices** over six months, from about 2,150 shops for 343
   items, in a star schema with 8 analysis tables.
 - **Price trend:** overall prices rose **1.2%** from May to October, but dry
-  goods (barangan kering) rose **8.8%**, climbing every month.
+  goods rose **8.8%**, led by imported Indian shallots (+35%) and onions
+  (+25%). Grade B and C eggs rose by a third.
 - **Leafy vegetables jumped 18–46%** from September to October in the same
   shops, while tomatoes and some fruit fell. A supply shock, not a data error.
 - **Shop type matters:** small grocers and wet markets are about 10% dearer
