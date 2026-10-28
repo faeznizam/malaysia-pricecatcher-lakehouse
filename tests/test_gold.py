@@ -131,3 +131,19 @@ def test_premise_labels_are_tidied(spark):
     dim = gold.build_dim_premise(raw)
     assert {r["premise_type"] for r in dim.collect()} == {"Pasar Basah"}
     assert sorted(r["state"] for r in dim.collect()) == ["Johor", "Johor", "Unknown", "Unknown"]
+
+
+def test_price_trend_chains_from_a_base_of_100(spark, lake):
+    rows = {r["year_month"]: r for r in
+            read(spark, lake, "mart_price_trend").filter("item_group = 'ALL ITEMS'").collect()}
+    assert rows["2026-09"]["price_index"] == 100.0
+    # item 10, the only item with enough matched shops, rose 10%
+    assert rows["2026-10"]["price_index"] == pytest.approx(110.0)
+    assert rows["2026-10"]["change_pct"] == pytest.approx(10.0)
+    assert rows["2026-10"]["items"] == 1
+
+
+def test_price_trend_handles_one_month(spark):
+    empty = spark.createDataFrame([], "item_code bigint, year_month string, prev_month string, "
+                                      "matched_change_pct double, enough_sample boolean, item_group string")
+    assert gold.build_mart_price_trend(empty).count() == 0

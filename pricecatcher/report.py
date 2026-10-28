@@ -30,19 +30,19 @@ STYLE = """
 :root {
   --surface: #fcfcfb; --surface-2: #f3f2ef; --border: #e2e1dc;
   --text: #0b0b0b; --text-2: #52514e; --muted: #75746f;
-  --up: #d0473a; --down: #2a78d6; --midline: #9a998f;
+  --up: #d0473a; --down: #2a78d6; --midline: #9a998f; --series: #6b4fbb;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --surface: #1a1a19; --surface-2: #232321; --border: #383835;
     --text: #f0efec; --text-2: #c3c2b7; --muted: #9a998f;
-    --up: #e0594b; --down: #3987e5; --midline: #75746f;
+    --up: #e0594b; --down: #3987e5; --midline: #75746f; --series: #9d86e9;
   }
 }
 :root[data-theme="dark"] {
   --surface: #1a1a19; --surface-2: #232321; --border: #383835;
   --text: #f0efec; --text-2: #c3c2b7; --muted: #9a998f;
-  --up: #e0594b; --down: #3987e5; --midline: #75746f;
+  --up: #e0594b; --down: #3987e5; --midline: #75746f; --series: #9d86e9;
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--surface); color: var(--text);
@@ -63,6 +63,11 @@ svg .label { fill: var(--text-2); }
 svg .value { fill: var(--text); font-variant-numeric: tabular-nums; }
 svg .bar.up { fill: var(--up); } svg .bar.down { fill: var(--down); }
 svg .midline { stroke: var(--midline); stroke-width: 1; }
+svg .baseline { stroke: var(--midline); stroke-width: 1; stroke-dasharray: 4 4; }
+svg .trend { fill: none; stroke: var(--series); stroke-width: 2; }
+svg .dot { fill: var(--series); stroke: var(--surface); stroke-width: 2; }
+svg .axis { fill: var(--muted); font-size: 12px; }
+svg g.point:hover .dot { r: 6; }
 svg g.row:hover .bar { opacity: .8; }
 svg g.row:hover text { font-weight: 650; }
 .legend { display: flex; gap: 16px; color: var(--text-2); font-size: .85rem; margin: 4px 0 8px; }
@@ -124,6 +129,39 @@ def diverging_bars(rows, baseline: float, value_fmt, tooltip) -> str:
     return "".join(parts)
 
 
+def line_chart(points, baseline: float, value_fmt, tooltip) -> str:
+    """One series over time: a 2px line, a dot and a value label per point,
+    and a dashed reference line at the baseline. points: list of (label, value)."""
+    width, height, left, right, top, bottom = 760, 220, 56, 40, 28, 32
+    values = [v for _, v in points] + [baseline]
+    low, high = min(values), max(values)
+    pad = max((high - low) * 0.15, 0.5)
+    low, high = low - pad, high + pad
+    step = (width - left - right) / max(len(points) - 1, 1)
+
+    def x(i):
+        return left + i * step
+
+    def y(v):
+        return top + (high - v) / (high - low) * (height - top - bottom)
+
+    parts = [f'<div class="chart-wrap"><svg viewBox="0 0 {width} {height}" role="img">',
+             f'<line class="baseline" x1="{left}" y1="{y(baseline):.1f}" x2="{width - right}" y2="{y(baseline):.1f}"/>',
+             f'<text class="axis" x="{left - 10}" y="{y(baseline) + 4:.1f}" text-anchor="end">{esc(value_fmt(baseline))}</text>']
+    path = " ".join(f"{'M' if i == 0 else 'L'}{x(i):.1f},{y(v):.1f}" for i, (_, v) in enumerate(points))
+    parts.append(f'<path class="trend" d="{path}"/>')
+    for i, (label, value) in enumerate(points):
+        parts.append(
+            f'<g class="point"><title>{esc(tooltip(label, value))}</title>'
+            f'<rect x="{x(i) - step / 2:.1f}" y="0" width="{step:.1f}" height="{height}" fill="transparent"/>'
+            f'<circle class="dot" cx="{x(i):.1f}" cy="{y(value):.1f}" r="4"/>'
+            f'<text class="value" x="{x(i):.1f}" y="{y(value) - 10:.1f}" text-anchor="middle">{esc(value_fmt(value))}</text>'
+            f'<text class="axis" x="{x(i):.1f}" y="{height - 10}" text-anchor="middle">{esc(label)}</text></g>'
+        )
+    parts.append("</svg></div>")
+    return "".join(parts)
+
+
 def table(headers, rows, numeric=()) -> str:
     head = "".join(f'<th class="{"n" if i in numeric else ""}">{esc(h)}</th>' for i, h in enumerate(headers))
     body = "".join(
@@ -181,6 +219,23 @@ def build(spark, lake: Path, site: Path) -> Path:
         .orderBy(F.desc("gap")).limit(10).collect()
     )
 
+    trend = gold("mart_price_trend").collect()
+    trend_months = sorted({r["year_month"] for r in trend})
+    trend_index = {(r["item_group"], r["year_month"]): r["price_index"] for r in trend}
+    overall = [(m, trend_index[("ALL ITEMS", m)]) for m in trend_months if ("ALL ITEMS", m) in trend_index]
+    trend_groups = ["ALL ITEMS"] + sorted({r["item_group"] for r in trend} - {"ALL ITEMS"})
+    if len(overall) > 1:
+        trend_html = (
+            line_chart(overall, 100, lambda v: fmt(v), lambda m, v: f"{m}: {v:.1f} ({v - 100:+.1f}% since {overall[0][0]})")
+            + "<details><summary>Show as table, by item group</summary>"
+            + table(["Item group"] + trend_months,
+                    [(g, *[fmt(trend_index.get((g, m))) for m in trend_months]) for g in trend_groups],
+                    tuple(range(1, 1 + len(trend_months))))
+            + "</details>"
+        )
+    else:
+        trend_html = '<p class="note"><em>Not enough data yet: this needs at least two months.</em></p>'
+
     shop_types = (gold("mart_premise_type_index").filter(F.col("year_month") == latest_month)
                   .orderBy(F.desc("price_index")).collect())
     groups = (gold("mart_item_group_mom").filter(F.col("year_month") == latest_month)
@@ -226,6 +281,13 @@ Page generated {now} (Malaysia time).</p>
   <div class="tile"><div class="v">{fmt((quarantined['rows'] / checked * 100) if quarantined and checked else None, 3)}%</div>
     <div class="k">rows quarantined by data quality checks</div></div>
 </div>
+
+<h2>How have prices moved{f" since {overall[0][0]}" if len(overall) > 1 else ""}?</h2>
+<p class="note">Price index, {overall[0][0] if overall else "first month"} = 100. Each month's change combines the matched
+changes of every item sold in at least 20 of the same shops in both months (a geometric mean, the method
+statistics offices use for item prices), chained month to month. Items are not weighted by how much people buy them,
+so this is not the official CPI.</p>
+{trend_html}
 
 <h2>Which states are most expensive?</h2>
 <p class="note">Price index for {latest_month} on a basket of {basket} items sold in every state.
@@ -297,7 +359,7 @@ it can show a change that no shop actually made. These items show the biggest ga
 Source: Ministry of Domestic Trade and Cost of Living (KPDN) PriceCatcher via
 <a href="{SOURCE_URL}">data.gov.my</a>, CC BY 4.0. Code and method: <a href="{REPO_URL}">GitHub</a>.
 Download the tables: <a href="data/mart_state_index.csv">state index</a>,
-<a href="data/mart_premise_type_index.csv">shop type index</a>, <a href="data/mart_item_group_mom.csv">item group changes</a>,
+<a href="data/mart_price_trend.csv">price trend</a>, <a href="data/mart_premise_type_index.csv">shop type index</a>, <a href="data/mart_item_group_mom.csv">item group changes</a>,
 <a href="data/mart_item_mom.csv">monthly changes</a>, <a href="data/mart_item_month.csv">item prices by month</a>,
 <a href="data/dq_run_log.csv">data quality log</a>.
 </footer>
@@ -315,6 +377,10 @@ Download the tables: <a href="data/mart_state_index.csv">state index</a>,
 
     # The same headline numbers as plain text, for the terminal and for writing up findings.
     summary = [f"Data up to {latest_date:%d %b %Y}. Latest month {latest_month}.", "",
+               f"Price trend ({trend_months[0] if trend_months else '-'} = 100):"]
+    summary += [f"  {g:<28} " + "  ".join(f"{m} {fmt(trend_index.get((g, m))):>6}" for m in trend_months)
+                for g in trend_groups]
+    summary += ["",
                "Shop type index (Malaysia = 100):"]
     summary += [f"  {r['premise_type']:<28} {fmt(r['price_index']):>6}" for r in shop_types]
     summary += ["", f"Item groups, median matched change {prev_month} to {latest_month}:"]
@@ -331,7 +397,7 @@ Download the tables: <a href="data/mart_state_index.csv">state index</a>,
                 f"({fmt(r['p90_p10_ratio'], 2)}x)" for r in spread]
     (site / "summary.txt").write_text("\n".join(summary) + "\n", encoding="utf-8")
 
-    for name in ["mart_state_index", "mart_premise_type_index", "mart_item_group_mom", "mart_item_mom",
+    for name in ["mart_price_trend", "mart_state_index", "mart_premise_type_index", "mart_item_group_mom", "mart_item_mom",
                  "mart_item_month"]:
         table_df = gold(name)
         write_csv(site / "data" / f"{name}.csv", table_df.orderBy(*table_df.columns[:2]).collect())

@@ -99,8 +99,8 @@ no shop changed its price. Udang putih besar (large white prawns) shows this
 clearly: the naive change says it fell 3.4%, but in shops that reported in
 both months it actually rose 1.6%. The fall came from cheaper shops joining
 in October, not from price cuts. Imported red shallots (bawang kecil merah)
-go the other way: naive +10.5%, matched only +3.2%, because dearer shops
-joined.
+go the other way: naive +10.5%, matched only +3.2%, because the mix shifted
+towards dearer shops.
 Comparing each shop with itself, as official price indices do, avoids
 reporting changes that never happened.
 

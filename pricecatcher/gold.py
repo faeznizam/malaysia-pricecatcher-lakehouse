@@ -13,6 +13,7 @@ Analysis tables ("marts"):
     <lake>/gold/mart_item_month          price level and spread per item per month
     <lake>/gold/mart_item_mom            month-on-month change per item, naive and matched
     <lake>/gold/mart_item_group_mom      month-on-month change per item group (matched)
+    <lake>/gold/mart_price_trend         price index over time, overall and per item group
     <lake>/gold/mart_state_index         price level per state on a common basket (Malaysia = 100)
     <lake>/gold/mart_premise_type_index  price level per type of shop, same method
 
@@ -238,6 +239,37 @@ def build_mart_item_group_mom(item_mom: DataFrame) -> DataFrame:
     )
 
 
+def build_mart_price_trend(item_mom: DataFrame) -> DataFrame:
+    """A price index over time, overall and per item group (first month = 100).
+
+    Each month's change is the geometric mean of the items' matched changes
+    (the method statistics offices use to combine item prices), and the
+    months are chained together. Only items with enough matched premises count.
+    """
+    items = item_mom.filter(F.col("enough_sample")).withColumn(
+        "log_ratio", F.log(1 + F.col("matched_change_pct") / 100))
+    by_group = items.groupBy("item_group", "year_month").agg(
+        F.count("*").alias("items"), F.avg("log_ratio").alias("log_ratio"))
+    overall = items.groupBy("year_month").agg(
+        F.count("*").alias("items"), F.avg("log_ratio").alias("log_ratio")
+    ).withColumn("item_group", F.lit("ALL ITEMS"))
+    changes = by_group.unionByName(overall)
+
+    # The month before the first change is the base month (index 100).
+    first_month = item_mom.agg(F.min("prev_month")).first()[0]
+    groups = changes.select("item_group").distinct()
+    base = groups.select("item_group", F.lit(first_month).alias("year_month"),
+                         F.lit(0).cast("long").alias("items"), F.lit(0.0).alias("log_ratio"))
+    running = Window.partitionBy("item_group").orderBy("year_month").rowsBetween(Window.unboundedPreceding, 0)
+    return (
+        changes.unionByName(base)
+        .filter(F.col("year_month").isNotNull())  # no base month when there's only one month of data
+        .withColumn("change_pct", F.round((F.exp("log_ratio") - 1) * 100, 2))
+        .withColumn("price_index", F.round(F.exp(F.sum("log_ratio").over(running)) * 100, 1))
+        .drop("log_ratio")
+    )
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--lake", default=DEFAULT_LAKE, help="Lake folder (default: $LAKE_ROOT or lake)")
@@ -267,6 +299,8 @@ def main(argv=None) -> int:
     counts["mart_item_mom"] = write(build_mart_item_mom(fact, dim_item), gold / "mart_item_mom")
     counts["mart_item_group_mom"] = write(build_mart_item_group_mom(read_delta(spark, gold / "mart_item_mom")),
                                           gold / "mart_item_group_mom")
+    counts["mart_price_trend"] = write(build_mart_price_trend(read_delta(spark, gold / "mart_item_mom")),
+                                       gold / "mart_price_trend")
     counts["mart_state_index"] = write(build_mart_state_index(fact, dim_premise), gold / "mart_state_index")
     counts["mart_premise_type_index"] = write(build_mart_premise_type_index(fact, dim_premise),
                                               gold / "mart_premise_type_index")

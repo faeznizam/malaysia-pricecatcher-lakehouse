@@ -258,3 +258,23 @@ read, hence the DuckDB re-encode in bronze.
 **Interview question:** *Why Parquet instead of CSV?* Smaller, faster to
 query because you read only the columns you need, and it keeps data types,
 so there's no guessing about dates or numbers.
+
+## Step 6c: Price trend over six months
+
+**What it does.** `mart_price_trend` turns the month-on-month matched changes
+into an index over time (first month = 100), for all items and per item
+group. The report shows it as a line chart.
+
+**How.** Each month, take every item with at least 20 matched shops, and
+combine their changes with a geometric mean (average of the log changes).
+Then chain the months: index = previous index x (1 + this month's change).
+
+**Interview questions**
+1. *Why a geometric mean?* It's how statistics offices combine price changes
+   of the same kind of item (the Jevons index). An item that doubles and one
+   that halves cancel out, which an ordinary average gets wrong.
+2. *Why chain month to month?* Each month uses the shops that reported in
+   both months, so the comparison is always like for like, even as shops come
+   and go over six months.
+3. *Is this inflation?* Not officially. The CPI weights items by how much
+   households spend on them; this index treats every item equally.

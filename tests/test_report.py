@@ -47,7 +47,7 @@ def test_dq_table_uses_each_months_latest_run(site):
 
 
 def test_csv_exports_have_headers(site):
-    for name in ["mart_state_index", "mart_premise_type_index", "mart_item_group_mom", "mart_item_mom",
+    for name in ["mart_price_trend", "mart_state_index", "mart_premise_type_index", "mart_item_group_mom", "mart_item_mom",
                  "mart_item_month", "dq_run_log"]:
         with open(site / "data" / f"{name}.csv", encoding="utf-8") as f:
             rows = list(csv.reader(f))
@@ -75,3 +75,10 @@ def test_new_analysis_sections_and_summary(site):
     assert "Which kinds of goods got dearer?" in html and "BARANGAN KERING" in html
     assert "Where shopping around pays most" in html
     assert "Shop type index" in (site / "summary.txt").read_text(encoding="utf-8")
+
+
+def test_trend_section(site):
+    html = page(site)
+    assert "How have prices moved since 2026-09?" in html
+    assert 'class="trend"' in html
+    assert "Price trend (2026-09 = 100)" in (site / "summary.txt").read_text(encoding="utf-8")
