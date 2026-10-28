@@ -8,6 +8,8 @@ An automated data pipeline that turns Malaysia's open government price data
 tables and a public report. Built with **PySpark** and **Delta Lake** in a
 medallion (bronze / silver / gold) layout, scheduled with **GitHub Actions**.
 
+**Live report:** https://faeznizam.github.io/malaysia-pricecatcher-lakehouse/ (rebuilt daily)
+
 **What it answers:** which states are most expensive on the same basket of
 goods, which prices moved most this month (measured fairly), and how
 trustworthy the source data is.
