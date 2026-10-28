@@ -141,7 +141,7 @@ chained month to month; every item counts equally):
 
 Overall, prices rose only 1.2% in five months, about 2.9% a year if it
 continued, which is in the range of normal inflation. The exception is dry
-goods (rice, sugar, flour, cooking oil and similar staples): up 8.8%, rising
+goods (barangan kering, the group that holds dry staples): up 8.8%, rising
 every month, with the biggest jump in September (+3.8%). That steady climb
 looks like a cost or policy change working through, not a weather shock like
 the leafy vegetables in Q4. Packaged and hygiene products barely moved,

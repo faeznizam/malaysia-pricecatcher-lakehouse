@@ -36,8 +36,8 @@ flowchart LR
 - **Six months of prices** from about 2,150 shops for 343 items
   (September and October alone: 2,699,801 prices).
 - **Price trend:** overall prices rose **1.2%** from May to October, but dry
-  goods (rice, sugar, flour, oil) rose **8.8%**, climbing every month.
-- **Leafy vegetables jumped 20–46%** from September to October in the same
+  goods (barangan kering) rose **8.8%**, climbing every month.
+- **Leafy vegetables jumped 18–46%** from September to October in the same
   shops, while tomatoes and some fruit fell. A supply shock, not a data error.
 - **Shop type matters:** small grocers and wet markets are about 10% dearer
   than hypermarkets on the same items.
