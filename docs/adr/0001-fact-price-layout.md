@@ -37,19 +37,33 @@ laptop under WSL2, Spark local mode:
 (Write times include the first layout paying Spark's start-up costs, so they
 are only a rough guide.)
 
+Re-measured on 28 Oct 2026 after extending the data to six months:
+10,133,244 rows (May to 26 Oct 2026), same laptop:
+
+| Layout | Files | Size (MB) | Write (s) | one_month (s) | one_item (s) | full_scan (s) |
+|---|---:|---:|---:|---:|---:|---:|
+| unpartitioned | 11 | 39.2 | 8.9 | 0.38 | 0.46 | 2.12 |
+| by_month | 33 | 41.0 | 8.0 | 0.41 | 0.41 | 2.08 |
+| by_month_zorder | 6 | 43.2 | 18.4 | 0.40 | 0.45 | 2.79 |
+| by_day | 919 | 52.2 | 9.3 | 0.39 | 0.90 | 3.31 |
+
 ## Findings
 
-1. **At this size, partitioning by month vs not at all makes no real
-   difference.** Every query on both finishes in under a second, and gaps of
-   0.1 s are noise. Partition pruning saves reading files, and with 10 MB
-   there's almost nothing to save.
-2. **Z-ordering made things worse.** It took over twice as long to write as
-   by_month and squeezed the table into 2 files. Fewer files means fewer
-   pieces to process in parallel, so the full scan was 78% slower
-   (1.32 s vs 0.74 s).
-3. **Partitioning by day is the classic small-files mistake.** It made
-   176 files instead of 8 and used 26% more storage, and the full scan was 66%
-   slower (1.23 s vs 0.74 s). That overhead grows as more days are loaded.
+1. **Monthly folders vs no folders still makes no real difference.** At
+   2.7 million rows the full scan took 0.74 s vs 0.79 s; at 10.1 million,
+   2.08 s vs 2.12 s. Even reading one month wasn't faster with month folders
+   (0.41 s vs 0.38 s): at 40 MB, opening the files costs more than the
+   reading that pruning saves.
+2. **Z-ordering made things worse at both sizes.** Write time doubled
+   (18.4 s vs 8.0 s at 10 million rows) and the full scan was 34% slower
+   (2.79 s vs 2.08 s), because packing the data into 6 big files leaves Spark
+   fewer pieces to work on in parallel. It didn't speed up the one-item
+   query either.
+3. **Daily folders got worse as the data grew.** At 10 million rows they made
+   919 files (vs 33), took 27% more space, and made the one-item query
+   2.2x slower (0.90 s vs 0.41 s) and the full scan 59% slower (3.31 s vs
+   2.08 s). That's the small-files problem growing with the data: the cost is
+   per file, and the file count grows every day.
 
 ## Decision
 

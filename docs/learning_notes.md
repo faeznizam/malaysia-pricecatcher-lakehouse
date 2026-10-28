@@ -231,8 +231,9 @@ queries on each. The decision and the numbers are in
    second), so I chose month because it makes month-by-month reloads safe and
    matches how the data arrives.
 2. *Why not partition by day?* It created 176 small files instead of 8, used
-   26% more storage and made the full scan 66% slower. That's the small-files
-   problem.
+   26% more storage and made the full scan 66% slower. When I re-ran it at
+   10 million rows it got worse: 919 files, and the one-item query was 2.2x
+   slower. That's the small-files problem, and it grows with the data.
 3. *Did Z-ordering help?* No. It doubled write time and made the full scan
    78% slower, because 2 big files leave Spark less to do in parallel. It only
    pays off on much bigger tables.
