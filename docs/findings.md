@@ -1,7 +1,7 @@
 # Findings: Malaysia retail prices, May–October 2026
 
 Data: KPDN PriceCatcher via data.gov.my (CC BY 4.0), May to 26 Oct 2026,
-from about 2,150 shops for 343 items. October is a partial month, and
+10,133,244 prices from about 2,150 shops for 343 items. October is a partial month, and
 1–9 October and 16 and 30 September have no data at all. Sections 1–3 look at
 September and October; section 4 covers all six months.
 

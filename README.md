@@ -4,7 +4,7 @@
 [![Daily pipeline](https://github.com/faeznizam/malaysia-pricecatcher-lakehouse/actions/workflows/pipeline.yml/badge.svg)](https://github.com/faeznizam/malaysia-pricecatcher-lakehouse/actions/workflows/pipeline.yml)
 
 An automated data pipeline that turns Malaysia's open government price data
-(2.7 million shop-level prices, refreshed daily) into clean, tested analysis
+(10 million shop-level prices, refreshed daily) into clean, tested analysis
 tables and a public report. Built with **PySpark** and **Delta Lake** in a
 medallion (bronze / silver / gold) layout, scheduled with **GitHub Actions**.
 
@@ -33,8 +33,8 @@ flowchart LR
 
 ## Results (real data, May to 26 Oct 2026)
 
-- **Six months of prices** from about 2,150 shops for 343 items
-  (September and October alone: 2,699,801 prices).
+- **10,133,244 prices** over six months, from about 2,150 shops for 343
+  items, in a star schema with 8 analysis tables.
 - **Price trend:** overall prices rose **1.2%** from May to October, but dry
   goods (barangan kering) rose **8.8%**, climbing every month.
 - **Leafy vegetables jumped 18–46%** from September to October in the same
@@ -58,7 +58,7 @@ flowchart LR
   ([docs/data_profile.md](docs/data_profile.md)); each run logs per-rule counts.
 - **Fair month-on-month change:** "matched" changes compare only shops that
   reported in both months, the way official price indices avoid mix effects.
-- **Unknown codes kept, not dropped:** 1.5% of prices use item codes not yet in
+- **Unknown codes kept, not dropped:** 1.6% of prices use item codes not yet in
   the published lookup; they map to a `-1` member and stay visible.
 - **Measured storage layout:** a benchmark of four layouts on the real data
   chose monthly partitions ([ADR 0001](docs/adr/0001-fact-price-layout.md)).
