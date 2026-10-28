@@ -236,6 +236,12 @@ def build(spark, lake: Path, site: Path) -> Path:
     else:
         trend_html = '<p class="note"><em>Not enough data yet: this needs at least two months.</em></p>'
 
+    item_trend = gold("mart_item_trend")
+    trend_movers = sorted(
+        {r["item_code"]: r for r in item_trend.orderBy(F.desc("change_since_start_pct")).limit(MOVERS_PER_SIDE).collect()
+         + item_trend.orderBy("change_since_start_pct").limit(MOVERS_PER_SIDE).collect()}.values(),
+        key=lambda r: -r["change_since_start_pct"])
+
     shop_types = (gold("mart_premise_type_index").filter(F.col("year_month") == latest_month)
                   .orderBy(F.desc("price_index")).collect())
     groups = (gold("mart_item_group_mom").filter(F.col("year_month") == latest_month)
@@ -288,6 +294,17 @@ changes of every item sold in at least 20 of the same shops in both months (a ge
 statistics offices use for item prices), chained month to month. Items are not weighted by how much people buy them,
 so this is not the official CPI.</p>
 {trend_html}
+
+<h2>Which items rose and fell most{f" since {trend_movers[0]['from_month']}" if trend_movers else ""}?</h2>
+<p class="note">Each item's matched changes chained over every month. Only items with at least 20 of the same shops
+in every pair of months.</p>
+{('<div class="legend"><span class="up">price rose</span><span class="down">price fell</span></div>'
+  + diverging_bars([(item_label(r), r["change_since_start_pct"]) for r in trend_movers], 0,
+                   lambda v: fmt(v, 1, True) + "%", lambda s, v: f"{s}: {v:+.1f}% over the period")
+  + "<details><summary>Show as table</summary>"
+  + table(["Item", "Group", "Change %"],
+          [(item_label(r), r["item_group"], fmt(r["change_since_start_pct"], 2, True)) for r in trend_movers], (2,))
+  + "</details>") if trend_movers else '<p class="note"><em>Not enough data yet.</em></p>'}
 
 <h2>Which states are most expensive?</h2>
 <p class="note">Price index for {latest_month} on a basket of {basket} items sold in every state.
@@ -359,7 +376,7 @@ it can show a change that no shop actually made. These items show the biggest ga
 Source: Ministry of Domestic Trade and Cost of Living (KPDN) PriceCatcher via
 <a href="{SOURCE_URL}">data.gov.my</a>, CC BY 4.0. Code and method: <a href="{REPO_URL}">GitHub</a>.
 Download the tables: <a href="data/mart_state_index.csv">state index</a>,
-<a href="data/mart_price_trend.csv">price trend</a>, <a href="data/mart_premise_type_index.csv">shop type index</a>, <a href="data/mart_item_group_mom.csv">item group changes</a>,
+<a href="data/mart_price_trend.csv">price trend</a>, <a href="data/mart_item_trend.csv">item changes over the period</a>, <a href="data/mart_premise_type_index.csv">shop type index</a>, <a href="data/mart_item_group_mom.csv">item group changes</a>,
 <a href="data/mart_item_mom.csv">monthly changes</a>, <a href="data/mart_item_month.csv">item prices by month</a>,
 <a href="data/dq_run_log.csv">data quality log</a>.
 </footer>
@@ -380,6 +397,9 @@ Download the tables: <a href="data/mart_state_index.csv">state index</a>,
                f"Price trend ({trend_months[0] if trend_months else '-'} = 100):"]
     summary += [f"  {g:<28} " + "  ".join(f"{m} {fmt(trend_index.get((g, m))):>6}" for m in trend_months)
                 for g in trend_groups]
+    summary += ["", "Biggest changes since the first month (matched, chained):"]
+    summary += [f"  {item_label(r):<40} {fmt(r['change_since_start_pct'], 2, True):>7}%  ({r['item_group']})"
+                for r in trend_movers]
     summary += ["",
                "Shop type index (Malaysia = 100):"]
     summary += [f"  {r['premise_type']:<28} {fmt(r['price_index']):>6}" for r in shop_types]
@@ -397,7 +417,7 @@ Download the tables: <a href="data/mart_state_index.csv">state index</a>,
                 f"({fmt(r['p90_p10_ratio'], 2)}x)" for r in spread]
     (site / "summary.txt").write_text("\n".join(summary) + "\n", encoding="utf-8")
 
-    for name in ["mart_price_trend", "mart_state_index", "mart_premise_type_index", "mart_item_group_mom", "mart_item_mom",
+    for name in ["mart_price_trend", "mart_item_trend", "mart_state_index", "mart_premise_type_index", "mart_item_group_mom", "mart_item_mom",
                  "mart_item_month"]:
         table_df = gold(name)
         write_csv(site / "data" / f"{name}.csv", table_df.orderBy(*table_df.columns[:2]).collect())

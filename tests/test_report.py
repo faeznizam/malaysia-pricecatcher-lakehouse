@@ -47,7 +47,7 @@ def test_dq_table_uses_each_months_latest_run(site):
 
 
 def test_csv_exports_have_headers(site):
-    for name in ["mart_price_trend", "mart_state_index", "mart_premise_type_index", "mart_item_group_mom", "mart_item_mom",
+    for name in ["mart_price_trend", "mart_item_trend", "mart_state_index", "mart_premise_type_index", "mart_item_group_mom", "mart_item_mom",
                  "mart_item_month", "dq_run_log"]:
         with open(site / "data" / f"{name}.csv", encoding="utf-8") as f:
             rows = list(csv.reader(f))
@@ -82,3 +82,9 @@ def test_trend_section(site):
     assert "How have prices moved since 2026-09?" in html
     assert 'class="trend"' in html
     assert "Price trend (2026-09 = 100)" in (site / "summary.txt").read_text(encoding="utf-8")
+
+
+def test_item_trend_section(site):
+    html = page(site)
+    assert "Which items rose and fell most since 2026-09?" in html
+    assert "Biggest changes since the first month" in (site / "summary.txt").read_text(encoding="utf-8")

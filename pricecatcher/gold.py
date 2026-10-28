@@ -14,6 +14,7 @@ Analysis tables ("marts"):
     <lake>/gold/mart_item_mom            month-on-month change per item, naive and matched
     <lake>/gold/mart_item_group_mom      month-on-month change per item group (matched)
     <lake>/gold/mart_price_trend         price index over time, overall and per item group
+    <lake>/gold/mart_item_trend          each item's change from the first month to the latest
     <lake>/gold/mart_state_index         price level per state on a common basket (Malaysia = 100)
     <lake>/gold/mart_premise_type_index  price level per type of shop, same method
 
@@ -270,6 +271,26 @@ def build_mart_price_trend(item_mom: DataFrame) -> DataFrame:
     )
 
 
+def build_mart_item_trend(item_mom: DataFrame) -> DataFrame:
+    """Each item's change from the first month to the latest, chaining its
+    matched month-on-month changes. Only items with enough matched premises in
+    every month pair count, so a gap can't hide a jump."""
+    pairs = item_mom.select("year_month").distinct().count()
+    first_month = item_mom.agg(F.min("prev_month")).first()[0]
+    return (
+        item_mom.filter(F.col("enough_sample"))
+        .groupBy("item_code", "item", "unit", "item_group")
+        .agg(
+            F.count("*").alias("months_matched"),
+            F.round((F.exp(F.sum(F.log(1 + F.col("matched_change_pct") / 100))) - 1) * 100, 2)
+            .alias("change_since_start_pct"),
+            F.max("year_month").alias("to_month"),
+        )
+        .filter(F.col("months_matched") == pairs)
+        .withColumn("from_month", F.lit(first_month))
+    )
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--lake", default=DEFAULT_LAKE, help="Lake folder (default: $LAKE_ROOT or lake)")
@@ -301,6 +322,8 @@ def main(argv=None) -> int:
                                           gold / "mart_item_group_mom")
     counts["mart_price_trend"] = write(build_mart_price_trend(read_delta(spark, gold / "mart_item_mom")),
                                        gold / "mart_price_trend")
+    counts["mart_item_trend"] = write(build_mart_item_trend(read_delta(spark, gold / "mart_item_mom")),
+                                      gold / "mart_item_trend")
     counts["mart_state_index"] = write(build_mart_state_index(fact, dim_premise), gold / "mart_state_index")
     counts["mart_premise_type_index"] = write(build_mart_premise_type_index(fact, dim_premise),
                                               gold / "mart_premise_type_index")

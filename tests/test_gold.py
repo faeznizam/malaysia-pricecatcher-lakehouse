@@ -147,3 +147,10 @@ def test_price_trend_handles_one_month(spark):
     empty = spark.createDataFrame([], "item_code bigint, year_month string, prev_month string, "
                                       "matched_change_pct double, enough_sample boolean, item_group string")
     assert gold.build_mart_price_trend(empty).count() == 0
+
+
+def test_item_trend_chains_each_items_changes(spark, lake):
+    rows = {r["item_code"]: r for r in read(spark, lake, "mart_item_trend").collect()}
+    assert set(rows) == {10}  # the only item with enough matched shops
+    assert rows[10]["change_since_start_pct"] == pytest.approx(10.0)
+    assert (rows[10]["from_month"], rows[10]["to_month"]) == ("2026-09", "2026-10")

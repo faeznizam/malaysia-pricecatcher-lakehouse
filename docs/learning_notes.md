@@ -276,5 +276,8 @@ Then chain the months: index = previous index x (1 + this month's change).
 2. *Why chain month to month?* Each month uses the shops that reported in
    both months, so the comparison is always like for like, even as shops come
    and go over six months.
-3. *Is this inflation?* Not officially. The CPI weights items by how much
+3. *Which items drove it?* `mart_item_trend` chains each item's own matched
+   changes over all months, keeping only items with enough shops in every
+   month, and the report lists the biggest risers and fallers.
+4. *Is this inflation?* Not officially. The CPI weights items by how much
    households spend on them; this index treats every item equally.
