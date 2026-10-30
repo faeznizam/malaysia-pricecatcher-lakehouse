@@ -282,3 +282,29 @@ Then chain the months: index = previous index x (1 + this month's change).
    month, and the report lists the biggest risers and fallers.
 4. *Is this inflation?* Not officially. The CPI weights items by how much
    households spend on them; this index treats every item equally.
+
+## Step 7a: Infrastructure as code (Terraform)
+
+**What it does.** `infra/` describes the Azure resources (resource group,
+ADLS Gen2 storage, two containers, an access role and a budget) in
+Terraform files. `terraform apply` creates them; `terraform destroy` removes
+them.
+
+**Key ideas**
+- *Declarative:* you write what should exist, not the clicks to make it.
+  Terraform compares that with its state file and makes only the changes
+  needed.
+- *ADLS Gen2* is ordinary Azure Blob storage with the hierarchical
+  namespace switched on (`is_hns_enabled`), which gives real folders. Delta
+  and Spark rename and list folders a lot, so this matters.
+- *No keys:* storage keys are turned off; access is through Azure AD logins
+  and roles (Storage Blob Data Contributor).
+
+**Interview questions**
+1. *Why Terraform instead of clicking in the portal?* It's repeatable,
+   reviewable in git, and can rebuild the environment from nothing.
+2. *What is the state file?* Terraform's record of what it created, so it
+   knows what to change or delete next time. Never commit it; teams keep it
+   in remote storage.
+3. *Why LRS replication?* Cheapest option, and the data can be rebuilt from
+   the source, so extra copies aren't worth paying for.

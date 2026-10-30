@@ -23,3 +23,9 @@ Thumbs.db
 
 # Generated report website
 site/
+
+# Terraform (state and personal settings stay local)
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.*
+infra/terraform.tfvars
