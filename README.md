@@ -23,7 +23,9 @@ flowchart LR
     C -->|data quality rules| D[Silver<br/>clean prices]
     C -.->|failed rows| Q[Quarantine]
     D --> E[Gold<br/>star schema + marts]
-    E --> F[Report website<br/>+ CSV exports]
+    E --> G{Checks}
+    G -->|pass| F[Report website<br/>+ CSV exports]
+    G -.->|fail| I[GitHub issue;<br/>last good report stays live]
 ```
 
 | Layer | What happens | Key tables |
@@ -68,6 +70,11 @@ flowchart LR
 - **Real-world fix:** the publisher's files use Brotli compression, which Spark
   can't read; bronze re-encodes them with DuckDB first, and the tests use
   Brotli files so they match reality.
+- **Checks before publishing:** after gold, seven checks look at the real
+  tables (freshness, daily volume, quarantine rate, unknown codes, unique keys,
+  joins, index range). A failure stops the run before the report, so the live
+  site keeps the last good numbers, and the daily run opens a GitHub issue
+  naming the failed step.
 - **Automated:** tests run on every push; the full pipeline runs daily at 2pm
   Malaysia time and rebuilds the report.
 
@@ -85,12 +92,14 @@ make venv          # create .venv and install dependencies
 make test          # run the unit tests (no network needed)
 make download      # May 2026 to now, plus both lookups
 make profile       # describe the downloaded files (optional)
-make pipeline      # bronze -> silver -> gold -> report
+make pipeline      # bronze -> silver -> gold -> checks -> report
 ```
 
-Then open `site/index.html` in a browser.
+Then open `site/index.html` in a browser. If your downloaded data is more than
+3 days old, the freshness check stops the run; allow it with
+`make pipeline CHECK_ARGS="--max-age-days 30"`.
 
-Other targets: `make bronze`, `make silver`, `make gold`, `make report`,
+Other targets: `make bronze`, `make silver`, `make gold`, `make check`, `make report`,
 `make benchmark`, and `make download SINCE=2025-11` or `MONTHS="2026-08"` for other months.
 Raw files go to `data/landing/` (override with `LANDING_DIR`) and Delta tables
 to `lake/` (override with `LAKE_ROOT`). Data is never committed.
@@ -105,6 +114,7 @@ pricecatcher/bronze.py      bronze: schema contract, lineage, idempotent monthly
 pricecatcher/dq.py          data quality rules, one per line
 pricecatcher/silver.py      silver: apply the rules, quarantine, run log
 pricecatcher/gold.py        gold: star schema and marts
+pricecatcher/checks.py      checks on the real tables before publishing
 pricecatcher/report.py      static report website and CSV exports
 pricecatcher/benchmark.py   storage layout benchmark
 tests/                      unit tests for every step

@@ -283,6 +283,38 @@ Then chain the months: index = previous index x (1 + this month's change).
 4. *Is this inflation?* Not officially. The CPI weights items by how much
    households spend on them; this index treats every item equally.
 
+## Step 6d: Checks before publishing
+
+**What it does.** `pricecatcher/checks.py` (`make check`) runs after gold and
+before the report. It looks at the real tables and gives each check ok, warn
+or fail. A fail stops `make pipeline`, so the report isn't rebuilt and the live
+website keeps yesterday's numbers. Every run is logged to `meta/check_log`.
+
+| Check | Fails or warns when |
+|---|---|
+| freshness | newest price is more than 3 days old (fail) |
+| volume | a recent day has under half the usual rows (warn) |
+| quarantine | a month's latest silver run quarantined over 0.1% (fail) |
+| unknown_codes | over 5% of prices use codes missing from the lookups (warn) |
+| unique_key | two fact rows share a date, shop and item (fail) |
+| joins | a fact row has no match in a dimension table (fail) |
+| price_index | a state or shop-type index is empty or outside 50-200 (fail) |
+
+When the daily GitHub run fails at any step, it opens a GitHub issue named
+after the step (or comments on the open one), with a link to the logs.
+
+**Interview questions**
+1. *Why check the output when you already have unit tests?* Tests prove the
+   code is right on sample data. Checks prove today's real data is fine: a
+   source can stop updating or publish half a file while the code is unchanged.
+2. *Why fail on some checks and only warn on others?* Fail when publishing
+   would mislead people (stale or broken numbers). Warn when it's worth a look
+   but the numbers are still usable.
+3. *What is a circuit breaker?* A gate that stops bad data flowing to users.
+   Here the last good report stays live until the problem is fixed.
+4. *How did you pick the limits?* From the real runs: quarantine is under
+   0.01%, unknown codes 1.6%, indexes 95-110. Each limit sits well above normal.
+
 ## Step 7a: Infrastructure as code (Terraform)
 
 **What it does.** `infra/` describes the Azure resources (resource group,
