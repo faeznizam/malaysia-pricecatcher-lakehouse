@@ -340,3 +340,34 @@ them.
    in remote storage.
 3. *Why LRS replication?* Cheapest option, and the data can be rebuilt from
    the source, so extra copies aren't worth paying for.
+
+## Concept: Databricks words to know (before Step 8 starts)
+
+Plan in `docs/plan-databricks.md`. Short glossary so the plan reads easily:
+
+- *Workspace:* your Databricks website, where notebooks, jobs and tables live.
+- *Unity Catalog:* the catalog of every table, file and permission, in three
+  levels: catalog > schema > table (e.g. `pricecatcher.gold.fact_price`).
+  It also records lineage on its own.
+- *Volume:* a Unity Catalog folder for plain files (our landing zone).
+- *Managed vs external table:* managed = Databricks owns the files and deletes
+  them with the table; external = the files sit in your storage and stay.
+- *Serverless compute:* Databricks starts the machines for you in seconds;
+  you don't pick sizes.
+- *Auto Loader:* reads new files from a folder and remembers which it has
+  already read, so each run is incremental.
+- *Lakeflow Declarative Pipelines* (formerly DLT): you declare the tables
+  (bronze, silver, gold) and the rules; Databricks works out the order.
+- *Expectations:* row rules inside a pipeline that keep, drop or fail on bad
+  rows. Our `dq.py` rules become these.
+- *Lakeflow Jobs:* Databricks' scheduler: tasks, dependencies, retries,
+  triggers.
+- *Bundle:* a `databricks.yml` file that deploys jobs and pipelines from git,
+  like Terraform for Databricks.
+
+**Interview questions**
+1. *Why keep a local version as well?* It runs free on any laptop and in CI,
+   and proves the logic doesn't depend on one vendor.
+2. *Why is incremental loading harder here?* data.gov.my rewrites the same
+   monthly file every day, so "new file" isn't the same as "new data"; silver
+   needs a MERGE on the price key to avoid duplicates.
