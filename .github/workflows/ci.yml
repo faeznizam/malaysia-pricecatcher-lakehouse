@@ -60,7 +60,7 @@ jobs:
 
       - name: Re-run is idempotent
         run: |
-          count() { .venv-warehouse/bin/python -c "import duckdb; print(duckdb.connect('warehouse/pricecatcher.duckdb', read_only=True).sql('select (select count(*) from marts.fct_price), (select count(*) from marts.quarantine)').fetchone())"; }
+          count() { .venv-warehouse/bin/python -c "import duckdb; print(duckdb.connect('warehouse/pricecatcher.duckdb', read_only=True).execute('select (select count(*) from marts.fct_price), (select count(*) from marts.quarantine)').fetchone())"; }
           before=$(count)
           make warehouse WH_LANDING=data/sample_landing MONTHS=2026-10
           after=$(count)
