@@ -1,0 +1,7 @@
+# The Snowflake + dbt path has its own virtual environment (make wh-venv),
+# so its DuckDB version doesn't clash with the PySpark path's.
+dbt-core==1.12.7
+dbt-duckdb==1.11.1
+dbt-snowflake==1.12.5
+duckdb==2.0.1
+snowflake-connector-python==5.2.0

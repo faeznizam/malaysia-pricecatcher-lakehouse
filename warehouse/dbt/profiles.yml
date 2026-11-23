@@ -1,0 +1,21 @@
+# Run dbt from this folder with DBT_PROFILES_DIR=. (the Makefile does this).
+# Pick the target with DBT_TARGET: dev (local DuckDB, default) or snowflake.
+pricecatcher:
+  target: "{{ env_var('DBT_TARGET', 'dev') }}"
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('DUCKDB_PATH', '../pricecatcher.duckdb') }}"
+      schema: main
+      threads: 4
+    snowflake:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT', '') }}"
+      user: "{{ env_var('SNOWFLAKE_USER', '') }}"
+      private_key_path: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_PATH', '') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE', 'PRICECATCHER_LOADER') }}"
+      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE', 'PRICECATCHER_WH') }}"
+      database: "{{ env_var('SNOWFLAKE_DATABASE', 'PRICECATCHER') }}"
+      schema: STAGING
+      threads: 4
+      query_tag: pricecatcher-dbt

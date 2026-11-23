@@ -1,0 +1,80 @@
+version: 2
+
+models:
+  - name: fct_price
+    description: One row per clean price observation. Grain is (price_date, source_premise_code, source_item_code).
+    data_tests:
+      - unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [price_date, source_premise_code, source_item_code]
+    columns:
+      - name: price_date
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('dim_date'), field: date_day}
+      - name: premise_code
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('dim_premise'), field: premise_code}
+      - name: item_code
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('dim_item'), field: item_code}
+      - name: price
+        data_tests:
+          - not_null
+          - within_range:
+              arguments: {min_value: 0.01, max_value: 100000}
+
+  - name: dim_item
+    columns:
+      - name: item_code
+        data_tests: [unique, not_null]
+
+  - name: dim_premise
+    columns:
+      - name: premise_code
+        data_tests: [unique, not_null]
+      - name: state
+        data_tests: [not_null]
+
+  - name: dim_date
+    columns:
+      - name: date_day
+        data_tests: [unique, not_null]
+
+  - name: quarantine
+    description: Rows that failed an error rule, kept unchanged with the rules they failed.
+    columns:
+      - name: dq_errors
+        data_tests: [not_null]
+
+  - name: dq_run_log
+    description: One row per rule per month per dbt run.
+    columns:
+      - name: check_name
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [null_field, duplicate_key, price_not_positive, price_too_high, price_too_low, unknown_item, unknown_premise]
+
+  - name: mart_state_index
+    description: Price level per state on a common basket (Malaysia = 100).
+    data_tests:
+      - unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [year_month, state]
+    columns:
+      - name: price_index
+        data_tests:
+          - within_range:
+              arguments: {min_value: 50, max_value: 200}
+
+  - name: mart_premise_type_index
+    data_tests:
+      - unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [year_month, premise_type]

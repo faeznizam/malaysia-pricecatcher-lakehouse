@@ -41,3 +41,39 @@ pipeline: bronze silver gold check report
 
 benchmark:
 	$(PYTHON) -m pricecatcher.benchmark
+
+# --- Snowflake + dbt path (warehouse/) -------------------------------------------
+# Same landing files, transformed in SQL by dbt. WH_TARGET=duckdb runs it locally;
+# WH_TARGET=snowflake runs it in Snowflake (see warehouse/README.md for setup).
+WH_TARGET ?= duckdb
+WH_LANDING ?= data/landing
+WH_VENV ?= .venv-warehouse
+WH_DUCKDB ?= $(abspath warehouse/pricecatcher.duckdb)
+WH_DBT_ENV = cd warehouse/dbt && DBT_PROFILES_DIR=. DUCKDB_PATH=$(WH_DUCKDB) \
+	DBT_TARGET=$(if $(filter snowflake,$(WH_TARGET)),snowflake,dev) $(abspath $(WH_VENV))/bin/dbt
+
+.PHONY: wh-venv wh-sample wh-load wh-dbt wh-freshness warehouse
+
+wh-venv:
+	python3 -m venv $(WH_VENV)
+	$(WH_VENV)/bin/pip install --upgrade pip
+	$(WH_VENV)/bin/pip install -r warehouse/requirements.txt
+
+# A small made-up landing folder with one example of each data problem.
+wh-sample:
+	$(WH_VENV)/bin/python warehouse/sample_data.py --landing data/sample_landing
+
+wh-load:
+	$(WH_VENV)/bin/python warehouse/load.py --target $(WH_TARGET) --landing $(WH_LANDING) \
+		--duckdb-path $(WH_DUCKDB) $(if $(MONTHS),--months $(MONTHS))
+
+# The --empty run creates any missing tables with no rows first, so the
+# incremental unit test has a table to read on a brand-new warehouse.
+wh-dbt:
+	$(WH_DBT_ENV) run --empty --select +fct_price --quiet
+	$(WH_DBT_ENV) build
+
+wh-freshness:
+	$(WH_DBT_ENV) source freshness
+
+warehouse: wh-load wh-dbt

@@ -1,0 +1,40 @@
+version: 2
+
+# dbt unit tests: fixed input rows in, expected output rows out. They run
+# without any real data, so they check the logic itself.
+unit_tests:
+  - name: dq_rules_flag_and_quarantine_the_right_rows
+    description: Each error rule quarantines its row; warn rules flag but keep; a clean row passes.
+    model: int_prices__dq_checked
+    given:
+      - input: ref('stg_pricecatcher__prices')
+        rows:
+          # item 1: median 2.00 across these rows
+          - {price_date: 2026-10-01, premise_code: 10, item_code: 1, price: 2.0,  year_month: '2026-10', _ingested_at: '2026-10-02 00:00:00'}
+          - {price_date: 2026-10-01, premise_code: 11, item_code: 1, price: 2.0,  year_month: '2026-10', _ingested_at: '2026-10-02 00:00:00'}
+          - {price_date: 2026-10-01, premise_code: 11, item_code: 1, price: 2.1,  year_month: '2026-10', _ingested_at: '2026-10-02 00:00:01'}  # repeat key
+          - {price_date: 2026-10-02, premise_code: 12, item_code: 1, price: 20.0, year_month: '2026-10', _ingested_at: '2026-10-02 00:00:00'}  # 10x median
+          - {price_date: 2026-10-02, premise_code: 13, item_code: 1, price: 0.2,  year_month: '2026-10', _ingested_at: '2026-10-02 00:00:00'}  # 1/10 median
+          - {price_date: 2026-10-02, premise_code: 14, item_code: 1, price: 0.0,  year_month: '2026-10', _ingested_at: '2026-10-02 00:00:00'}  # zero
+          - {price_date: 2026-10-03, premise_code: 10, item_code: 1, price: null, year_month: '2026-10', _ingested_at: '2026-10-02 00:00:00'}  # missing price
+          - {price_date: 2026-10-03, premise_code: 99, item_code: 1, price: 2.0,  year_month: '2026-10', _ingested_at: '2026-10-02 00:00:00'}  # unknown premise
+      - input: ref('stg_pricecatcher__items')
+        rows:
+          - {item_code: 1}
+      - input: ref('stg_pricecatcher__premises')
+        rows:
+          - {premise_code: 10}
+          - {premise_code: 11}
+          - {premise_code: 12}
+          - {premise_code: 13}
+          - {premise_code: 14}
+    expect:
+      rows:
+        - {premise_code: 10, price: 2.0,  fails_duplicate_key: false, fails_price_too_high: false, fails_null_field: false, fails_unknown_premise: false, is_quarantined: false}
+        - {premise_code: 11, price: 2.0,  fails_duplicate_key: false, fails_price_too_high: false, fails_null_field: false, fails_unknown_premise: false, is_quarantined: false}
+        - {premise_code: 11, price: 2.1,  fails_duplicate_key: true,  fails_price_too_high: false, fails_null_field: false, fails_unknown_premise: false, is_quarantined: true}
+        - {premise_code: 12, price: 20.0, fails_duplicate_key: false, fails_price_too_high: true,  fails_null_field: false, fails_unknown_premise: false, is_quarantined: true}
+        - {premise_code: 13, price: 0.2,  fails_duplicate_key: false, fails_price_too_high: false, fails_null_field: false, fails_unknown_premise: false, is_quarantined: true}
+        - {premise_code: 14, price: 0.0,  fails_duplicate_key: false, fails_price_too_high: false, fails_null_field: false, fails_unknown_premise: false, is_quarantined: true}
+        - {premise_code: 10, price: null, fails_duplicate_key: false, fails_price_too_high: false, fails_null_field: true,  fails_unknown_premise: false, is_quarantined: true}
+        - {premise_code: 99, price: 2.0,  fails_duplicate_key: false, fails_price_too_high: false, fails_null_field: false, fails_unknown_premise: true,  is_quarantined: false}
