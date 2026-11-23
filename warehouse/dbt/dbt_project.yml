@@ -1,0 +1,35 @@
+name: pricecatcher
+version: "1.0.0"
+profile: pricecatcher
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+clean-targets: ["target", "dbt_packages"]
+
+vars:
+  # How far from its item's median a price may be before we treat it as a typo
+  # (same as TOO_FAR in pricecatcher/dq.py).
+  dq_too_far: 10
+  # Incremental runs rebuild this many of the latest months. The publisher keeps
+  # adding days to the current month, and last month's final days arrive early
+  # in the new month, so 2 months covers every late row.
+  reprocess_months: 2
+  # A month-on-month change based on fewer premises than this is too noisy to report.
+  min_matched_premises: 20
+
+models:
+  pricecatcher:
+    staging:
+      +materialized: view
+      +schema: staging
+    intermediate:
+      +materialized: view
+      +schema: staging
+    marts:
+      +materialized: table
+      +schema: marts
+
+tests:
+  pricecatcher:
+    +severity: error

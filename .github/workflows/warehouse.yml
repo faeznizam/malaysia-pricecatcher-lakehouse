@@ -1,0 +1,82 @@
+name: Snowflake pipeline
+
+# The SQL path: download the latest PriceCatcher files, load them into
+# Snowflake, and build the dbt models and tests there.
+# 06:30 UTC = 2:30pm Malaysia time, after the PySpark run.
+#
+# Turned off until Snowflake is set up (warehouse/README.md): add the
+# secrets below and set the repository variable SNOWFLAKE_ENABLED=true.
+on:
+  schedule:
+    - cron: "30 6 * * *"
+  workflow_dispatch:
+    inputs:
+      backfill:
+        description: Load every downloaded month, not just the latest two
+        type: boolean
+        default: false
+
+env:
+  START_MONTH: "2026-05"
+  WH_TARGET: snowflake
+  SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+  SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+  SNOWFLAKE_PRIVATE_KEY_PATH: ${{ github.workspace }}/snowflake_key.p8
+
+jobs:
+  build:
+    if: vars.SNOWFLAKE_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: warehouse/requirements.txt
+
+      - uses: actions/cache@v4
+        with:
+          path: data/landing
+          key: landing-${{ github.run_id }}
+          restore-keys: landing-
+
+      - name: Install
+        run: make wh-venv
+
+      - name: Private key
+        run: |
+          printf '%s\n' "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > snowflake_key.p8
+          chmod 600 snowflake_key.p8
+
+      - name: Download
+        run: python3 -m pricecatcher.download --since "$START_MONTH"
+
+      # Only the latest two months change upstream, so a daily run reloads just
+      # those (skipping this month on its first day, before it's published).
+      # A backfill run loads every month downloaded.
+      - name: Load into Snowflake
+        env:
+          BACKFILL: ${{ inputs.backfill }}
+        run: |
+          if [ "$BACKFILL" = "true" ]; then
+            make wh-load
+          else
+            months=""
+            for m in $(python3 -c 'from pricecatcher.download import previous_month, current_month; print(previous_month(), current_month())'); do
+              [ -f "data/landing/prices/pricecatcher_$m.parquet" ] && months="$months $m"
+            done
+            make wh-load MONTHS="$months"
+          fi
+
+      - name: dbt build
+        run: make wh-dbt
+
+      - name: Source freshness
+        run: make wh-freshness
+
+      - name: Remove key
+        if: always()
+        run: rm -f snowflake_key.p8

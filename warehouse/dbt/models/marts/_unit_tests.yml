@@ -1,0 +1,52 @@
+version: 2
+
+unit_tests:
+  - name: matched_change_ignores_shop_mix
+    description: >
+      Two shops keep the same price both months, but a dearer shop only reports
+      in October. The naive average says prices rose; the matched change says 0%.
+    model: mart_item_mom
+    overrides:
+      vars: {min_matched_premises: 2}
+    given:
+      - input: ref('fct_price')
+        rows:
+          - {item_code: 1, premise_code: 10, year_month: '2026-09', price: 2.00}
+          - {item_code: 1, premise_code: 11, year_month: '2026-09', price: 4.00}
+          - {item_code: 1, premise_code: 10, year_month: '2026-10', price: 2.00}
+          - {item_code: 1, premise_code: 11, year_month: '2026-10', price: 4.00}
+          - {item_code: 1, premise_code: 12, year_month: '2026-10', price: 9.00}
+      - input: ref('dim_item')
+        rows:
+          - {item_code: 1, item: 'Test item', unit: '1kg', item_group: 'TEST'}
+    expect:
+      rows:
+        - {item_code: 1, year_month: '2026-10', prev_month: '2026-09', naive_change_pct: 66.67, matched_premises: 2, matched_change_pct: 0.0}
+
+  - name: incremental_fact_rebuilds_only_recent_months
+    description: On an incremental run only months from reprocess_from_month onwards are selected.
+    model: fct_price
+    overrides:
+      macros:
+        is_incremental: true
+        reprocess_from_month: '2026-09'
+    given:
+      - input: this
+        rows:
+          - {year_month: '2026-10'}
+      - input: ref('int_prices__dq_checked')
+        rows:
+          - {price_date: 2026-08-31, premise_code: 10, item_code: 1, price: 2.0, year_month: '2026-08', is_quarantined: false, fails_unknown_item: false, fails_unknown_premise: false}
+          - {price_date: 2026-09-30, premise_code: 10, item_code: 1, price: 2.0, year_month: '2026-09', is_quarantined: false, fails_unknown_item: false, fails_unknown_premise: false}
+          - {price_date: 2026-10-01, premise_code: 10, item_code: 1, price: 2.0, year_month: '2026-10', is_quarantined: false, fails_unknown_item: false, fails_unknown_premise: false}
+          - {price_date: 2026-10-01, premise_code: 11, item_code: 1, price: 0.0, year_month: '2026-10', is_quarantined: true,  fails_unknown_item: false, fails_unknown_premise: false}
+      - input: ref('dim_item')
+        rows:
+          - {item_code: 1}
+      - input: ref('dim_premise')
+        rows:
+          - {premise_code: 10}
+    expect:
+      rows:
+        - {year_month: '2026-09', premise_code: 10}
+        - {year_month: '2026-10', premise_code: 10}

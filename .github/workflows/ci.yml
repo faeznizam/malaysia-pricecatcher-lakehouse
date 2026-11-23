@@ -35,6 +35,38 @@ jobs:
       - name: Test
         run: make test
 
+  # The Snowflake + dbt path, run on DuckDB with a small made-up dataset:
+  # unit tests, a full build, then a re-run to prove loads are idempotent.
+  warehouse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: warehouse/requirements.txt
+
+      - name: Install
+        run: make wh-venv
+
+      - name: Sample data
+        run: make wh-sample
+
+      - name: Load and build
+        run: make warehouse WH_LANDING=data/sample_landing
+
+      - name: Re-run is idempotent
+        run: |
+          count() { .venv-warehouse/bin/python -c "import duckdb; print(duckdb.connect('warehouse/pricecatcher.duckdb', read_only=True).execute('select (select count(*) from marts.fct_price), (select count(*) from marts.quarantine)').fetchone())"; }
+          before=$(count)
+          make warehouse WH_LANDING=data/sample_landing MONTHS=2026-10
+          after=$(count)
+          echo "fct_price, quarantine rows: before $before, after $after"
+          test "$before" = "$after"
+
   terraform:
     runs-on: ubuntu-latest
     timeout-minutes: 10

@@ -78,10 +78,21 @@ flowchart LR
 - **Automated:** tests run on every push; the full pipeline runs daily at 2pm
   Malaysia time and rebuilds the report.
 
+## Second path: Snowflake + dbt
+
+The same data and the same 7 quality rules, rebuilt in SQL: files loaded into
+Snowflake (stage + `COPY INTO`), then transformed and tested with **dbt**:
+an incremental fact table rebuilt a month at a time, dimensions kept up to date
+with MERGE, rules defined once in a macro, and dbt unit tests. It runs on DuckDB
+in CI with no account needed. Details and a side-by-side comparison with the
+PySpark path: [warehouse/README.md](warehouse/README.md).
+
 ## Tech stack
 
 Python 3.14 · PySpark 4.2 · Delta Lake 4.4 · DuckDB (profiling and re-encoding)
 · pytest · GitHub Actions · Java 21
+
+SQL path: Snowflake · dbt Core (Snowflake and DuckDB adapters) · Python loader
 
 ## Quick start (Linux / WSL2)
 
@@ -118,6 +129,9 @@ pricecatcher/checks.py      checks on the real tables before publishing
 pricecatcher/report.py      static report website and CSV exports
 pricecatcher/benchmark.py   storage layout benchmark
 tests/                      unit tests for every step
+warehouse/load.py           SQL path: contract check, then PUT + COPY INTO Snowflake (or DuckDB)
+warehouse/setup.sql         SQL path: one-time Snowflake setup (warehouse, stage, role, service user)
+warehouse/dbt/              SQL path: dbt models, macros and tests
 .github/workflows/          CI on every push; daily pipeline
 docs/                       data profile, findings, decision records, learning notes
 ```

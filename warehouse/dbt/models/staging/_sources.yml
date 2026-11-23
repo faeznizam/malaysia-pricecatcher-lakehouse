@@ -1,0 +1,25 @@
+version: 2
+
+sources:
+  - name: pricecatcher
+    description: Raw PriceCatcher files from data.gov.my, loaded unchanged by warehouse/load.py.
+    schema: raw
+    config:
+      loaded_at_field: _ingested_at
+      freshness:
+        warn_after: {count: 2, period: day}
+        error_after: {count: 4, period: day}
+    tables:
+      - name: prices
+        description: One row per price observation, as published. One load per month (year_month).
+        columns:
+          - name: year_month
+            data_tests: [not_null]
+      - name: lookup_item
+        description: Item lookup, replaced in full on every load.
+        config:
+          freshness: null
+      - name: lookup_premise
+        description: Premise (shop) lookup, replaced in full on every load.
+        config:
+          freshness: null

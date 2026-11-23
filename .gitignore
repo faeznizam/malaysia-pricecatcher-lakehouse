@@ -29,3 +29,13 @@ infra/.terraform/
 infra/*.tfstate
 infra/*.tfstate.*
 infra/terraform.tfvars
+
+# Snowflake + dbt path
+.venv-warehouse/
+warehouse/*.duckdb
+warehouse/*.duckdb.wal
+warehouse/dbt/target/
+warehouse/dbt/logs/
+warehouse/dbt/dbt_packages/
+warehouse/dbt/.user.yml
+*.p8
